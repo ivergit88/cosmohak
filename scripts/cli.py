@@ -27,7 +27,7 @@ from cosmo.validation import ScenarioValidationError, ensure_valid  # noqa: E402
 def main() -> int:
     parser = argparse.ArgumentParser(description="Расчёт доступности группировки (консольный режим)")
     parser.add_argument("scenario", help="путь к JSON-сценарию cosmo-A-1.0")
-    parser.add_argument("--strategy", default="min_hops", choices=["min_hops", "min_distance"])
+    parser.add_argument("--strategy", default="min_distance", choices=["min_hops", "min_distance"])
     parser.add_argument("--export", default=None, help="файл для сохранения result JSON")
     parser.add_argument("--csv", default=None, help="файл для сохранения metrics CSV")
     args = parser.parse_args()

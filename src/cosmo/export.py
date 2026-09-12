@@ -1,14 +1,15 @@
 """Экспорт результатов: официальный формат cosmo-A-result-1.0.
 
-Обязательные поля:
+result.json строго по официальной схеме, только обязательные поля:
 - schema_version = "cosmo-A-result-1.0";
 - effective_scenario — полный фактически использованный сценарий
   (со всеми изменениями пользователя);
 - routes — ровно одна запись {t_s, client_id, path} на каждую пару
   «отсчёт × клиент»; path=[] если маршрута нет.
 
-Дополнительно разрешены summary / metadata / routing_strategy /
-generated_at; обязательные поля остаются корректными.
+Никаких дополнительных top-level полей в result не добавляется:
+структура критична. Сводки, диагностику и стратегию маршрутизации
+выгружайте отдельным файлом — build_analysis_report().
 """
 
 from __future__ import annotations
@@ -28,12 +29,15 @@ RESULT_SCHEMA_VERSION = "cosmo-A-result-1.0"
 def build_result(
     sim: SimulationResult,
     generated_at: str | None = None,
-    include_summary: bool = True,
+    include_summary: bool = False,
 ) -> dict[str, Any]:
-    """Собирает результат моделирования в официальном формате.
+    """Собирает результат в строгом официальном формате cosmo-A-result-1.0.
 
     routes идут в порядке «отсчёт, затем клиенты в порядке файла» —
     каждая пара (t_s, client_id) встречается ровно один раз.
+    Дополнительные top-level поля не добавляются (структура критична);
+    сводки — в build_analysis_report(). Параметры generated_at /
+    include_summary оставлены для совместимости и игнорируются.
     """
     clients = list(sim.clients)
     routes: list[dict[str, Any]] = []
@@ -47,28 +51,32 @@ def build_result(
     if len(routes) != expected:
         raise AssertionError(f"routes {len(routes)} != ticks*clients {expected}")
 
-    result: dict[str, Any] = {
+    return {
         "schema_version": RESULT_SCHEMA_VERSION,
         "effective_scenario": sim.scenario,
         "routes": routes,
     }
-    result["routing_strategy"] = sim.strategy
-    result["generated_at"] = generated_at or datetime.now(timezone.utc).isoformat(timespec="seconds")
-    result["metadata"] = {
-        "scenario_meta": sim.scenario.get("meta", {}),
-        "ticks": len(sim.ticks),
-        "clients": len(clients),
-        "satellites_total": len(sim.sat_ids),
-        "satellites_active_max": max(sim.active_counts) if sim.active_counts else 0,
-        "hops_definition": "число рёбер маршрута, включая две наземные линии",
+
+
+def build_analysis_report(sim: SimulationResult, generated_at: str | None = None) -> dict[str, Any]:
+    """Дополнительный файл анализа (не часть официального result).
+
+    Содержит стратегию маршрутизации, сводные метрики по клиентам,
+    глобальные показатели и интервалы перерывов с причинами.
+    """
+    clients = list(sim.clients)
+    return {
+        "analysis_of": RESULT_SCHEMA_VERSION,
+        "routing_strategy": sim.strategy,
+        "generated_at": generated_at or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "grid": {"ticks": len(sim.ticks), "step_s": sim.step_s(), "clients": clients},
+        "global": sim.global_metrics.as_dict(),
+        "clients": {cid: sim.metrics[cid].as_dict() for cid in clients},
+        "outage_intervals": {
+            cid: [o.as_dict() for o in sim.metrics[cid].outage_intervals] for cid in clients
+        },
         "status_labels": STATUS_LABELS,
     }
-    if include_summary:
-        result["summary"] = {
-            "global": sim.global_metrics.as_dict(),
-            "clients": {cid: sim.metrics[cid].as_dict() for cid in clients},
-        }
-    return result
 
 
 def dumps_result(result: dict[str, Any]) -> str:
@@ -86,6 +94,9 @@ def validate_result_structure(result: dict[str, Any], expected_routes: int | Non
     problems: list[str] = []
     if result.get("schema_version") != RESULT_SCHEMA_VERSION:
         problems.append(f"schema_version={result.get('schema_version')!r}")
+    extra = set(result) - {"schema_version", "effective_scenario", "routes"}
+    if extra:
+        problems.append(f"лишние top-level поля официального result: {sorted(extra)}")
     scenario = result.get("effective_scenario")
     if not isinstance(scenario, dict) or "environment" not in scenario or "design" not in scenario:
         problems.append("effective_scenario отсутствует или неполон")
@@ -180,9 +191,3 @@ def timeline_csv(sim: SimulationResult) -> str:
             row.append("->".join(sim.series[cid].paths[idx]))
         writer.writerow(row)
     return buffer.getvalue()
-
-
-def result_fingerprint(result: dict[str, Any]) -> str:
-    """Хэш результата для проверки воспроизводимости (без метки времени)."""
-    payload = {k: v for k, v in result.items() if k not in ("generated_at",)}
-    return canonical_json(payload)[:16]

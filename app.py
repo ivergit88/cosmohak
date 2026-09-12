@@ -29,6 +29,7 @@ from cosmo.comparison import (  # noqa: E402
     recommend,
 )
 from cosmo.export import (  # noqa: E402
+    build_analysis_report,
     build_result,
     dumps_result,
     dumps_scenario,
@@ -44,6 +45,7 @@ from cosmo.models import (  # noqa: E402
     deep_copy,
     fmt_pct,
     hhmmss,
+    scenario_meta,
     scenario_title,
 )
 from cosmo.optimizer import optimize_configuration  # noqa: E402
@@ -116,10 +118,18 @@ def prime_widgets(scenario: dict, nonce: int) -> None:
     st.session_state[f"env_horizon_s_{nonce}"] = int(env["horizon_s"])
     st.session_state[f"env_step_s_{nonce}"] = int(env["step_s"])
     st.session_state["sites_seed"] = [
-        {"id": g["id"], "role": g["role"], "lat_deg": float(g["lat_deg"]), "lon_deg": float(g["lon_deg"])}
+        {"id": g["id"], "name": str(g.get("name", g["id"])), "role": g["role"],
+         "lat_deg": float(g["lat_deg"]), "lon_deg": float(g["lon_deg"])}
         for g in scenario["ground_sites"]
     ]
     st.session_state["sites_nonce"] = st.session_state.get("sites_nonce", 0) + 1
+    st.session_state["sats_seed"] = [
+        {"id": x["id"], "plane_id": x["plane_id"], "slot_deg": float(x["slot_deg"]),
+         "launch_batch": int(x["launch_batch"])}
+        for x in scenario["design"]["satellites"]
+    ]
+    st.session_state["sats_nonce"] = st.session_state.get("sats_nonce", 0) + 1
+    st.session_state[f"meta_title_{nonce}"] = str(scenario_meta(scenario).get("title", ""))
 
 
 def load_builtin(filename: str) -> None:
@@ -192,6 +202,30 @@ def build_effective() -> tuple[dict, list[str]]:
         plane["raan_deg"] = float(raan) % 360.0
         plane["phase_deg"] = float(phase) % 360.0
 
+    # --- состав группировки: все поля спутников из исходного JSON ---
+    sats_key = f"sats_{st.session_state.get('sats_nonce', 0)}"
+    raw_sats = rows_from_editor(
+        st.session_state.get("sats_seed", []), st.session_state.get(sats_key)
+    )
+    edited_sats = []
+    for row in raw_sats:
+        sid = str(row.get("id") or "").strip()
+        if not sid:
+            continue
+        edited_sats.append({
+            "id": sid,
+            "plane_id": str(row.get("plane_id") or "").strip(),
+            "slot_deg": float(row.get("slot_deg") or 0.0),
+            "launch_batch": int(row.get("launch_batch") or 1),
+        })
+    if edited_sats:
+        design["satellites"] = edited_sats
+
+    # --- meta.title ---
+    title_value = st.session_state.get(f"meta_title_{nonce}")
+    if title_value is not None and isinstance(effective.get("meta"), dict):
+        effective["meta"]["title"] = str(title_value)
+
     fkey = f"failures_{st.session_state.get('failures_nonce', 0)}"
     raw_failures = rows_from_editor(
         st.session_state.get("failures_seed", []), st.session_state.get(fkey)
@@ -244,15 +278,31 @@ def build_effective() -> tuple[dict, list[str]]:
     raw_sites = rows_from_editor(
         st.session_state.get("sites_seed", []), st.session_state.get(skey)
     )
-    for idx, site in enumerate(effective["ground_sites"]):
-        for row in raw_sites:
-            if row.get("id") == site["id"]:
-                try:
-                    site["lat_deg"] = float(row.get("lat_deg", site["lat_deg"]))
-                    site["lon_deg"] = float(row.get("lon_deg", site["lon_deg"]))
-                except (TypeError, ValueError):
-                    errors.append(f"ground_sites[{idx}] ({site['id']}): некорректные координаты")
-                break
+    ground_by_id = {g["id"]: g for g in effective["ground_sites"]}
+    seen_ids = set()
+    for row in raw_sites:
+        gid = str(row.get("id") or "").strip()
+        if not gid:
+            continue
+        role = str(row.get("role") or "").strip()
+        try:
+            lat = float(row.get("lat_deg"))
+            lon = float(row.get("lon_deg"))
+        except (TypeError, ValueError):
+            errors.append(f"ground_sites ({gid}): некорректные координаты")
+            continue
+        site = ground_by_id.get(gid)
+        if site is None:  # новая строка редактора — новый наземный пункт
+            site = {"id": gid, "name": str(row.get("name") or gid), "role": role or "client",
+                    "lat_deg": lat, "lon_deg": lon}
+            effective["ground_sites"].append(site)
+            ground_by_id[gid] = site
+        site["lat_deg"], site["lon_deg"] = lat, lon
+        if role in ("client", "gateway"):
+            site["role"] = role
+        site["name"] = str(row.get("name") or site.get("name", gid))
+        seen_ids.add(gid)
+    effective["ground_sites"] = [g for g in effective["ground_sites"] if g["id"] in seen_ids]
 
     try:
         ensure_valid(effective)
@@ -305,8 +355,8 @@ with st.sidebar:
                 st.session_state["stale"] = True
                 st.session_state["autorun"] = True
                 st.rerun()
-        except json.JSONDecodeError as exc:
-            st.error(f"Файл не является корректным JSON: {exc}")
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            st.error(f"Файл не является корректным JSON (UTF-8): {exc}")
 
     st.divider()
     st.header("2. Конфигурация проекта")
@@ -373,28 +423,53 @@ with st.sidebar:
         c2.number_input("Целевая доступность", 0.0, 1.0, key=f"env_target_availability_{nonce}", step=0.05)
         c1.number_input("Горизонт, с", 120, 172800, key=f"env_horizon_s_{nonce}", step=120)
         c2.number_input("Шаг, с", 1, 3600, key=f"env_step_s_{nonce}", step=10)
-        st.markdown("**Координаты наземных пунктов**")
+        st.markdown("**Название проекта (meta.title)**")
+        st.text_input("Название", key=f"meta_title_{nonce}")
+        st.markdown("**Состав группировки (satellites)**")
+        st.data_editor(
+            st.session_state.get("sats_seed", []),
+            key=f"sats_{st.session_state.get('sats_nonce', 0)}",
+            num_rows="dynamic",
+            column_config={
+                "id": st.column_config.TextColumn("ID", required=True),
+                "plane_id": st.column_config.SelectboxColumn(
+                    "Плоскость",
+                    options=[p["id"] for p in base_scenario["design"]["planes"]],
+                    required=True,
+                ),
+                "slot_deg": st.column_config.NumberColumn("slot_deg, °", step=7.5),
+                "launch_batch": st.column_config.SelectboxColumn(
+                    "Очередь (launch_batch)", options=[1, 2, 3], required=True,
+                ),
+            },
+            use_container_width=True,
+        )
+        st.caption("ID, плоскость, положение в плоскости и очередь каждого аппарата.")
+        st.markdown("**Наземные пункты (ground_sites)**")
         st.data_editor(
             st.session_state.get("sites_seed", []),
             key=f"sites_{st.session_state.get('sites_nonce', 0)}",
-            num_rows="fixed",
+            num_rows="dynamic",
             column_config={
-                "id": st.column_config.TextColumn("ID", disabled=True),
-                "role": st.column_config.TextColumn("Роль", disabled=True),
+                "id": st.column_config.TextColumn("ID", required=True),
+                "name": st.column_config.TextColumn("Название"),
+                "role": st.column_config.SelectboxColumn("Роль", options=["client", "gateway"], required=True),
                 "lat_deg": st.column_config.NumberColumn("Широта", min_value=-90.0, max_value=90.0, step=0.5),
                 "lon_deg": st.column_config.NumberColumn("Долгота", min_value=-180.0, max_value=180.0, step=0.5),
             },
             use_container_width=True,
         )
+        st.caption("Роль, координаты и название пунктов; можно добавлять и удалять строки.")
 
     st.divider()
     st.header("3. Расчёт")
     strategy = st.selectbox(
         "Стратегия маршрутизации",
-        [STRATEGY_MIN_HOPS, STRATEGY_MIN_DISTANCE],
+        [STRATEGY_MIN_DISTANCE, STRATEGY_MIN_HOPS],
         format_func=lambda v: STRATEGY_LABELS[v],
-        help="«Минимум переходов» — базовый детерминированный BFS. "
-             "«Минимум длины» — альтернативная стратегия для анализа.",
+        help="По умолчанию — минимум суммарной геометрической длины "
+             "(Dijkstra по реальным расстояниям модели, детерминированный tie-break). "
+             "«Минимум переходов» — baseline для сравнения; достижимость совпадает.",
     )
     do_run = st.button("▶ Пересчитать", type="primary", use_container_width=True)
     col_r1, col_r2 = st.columns(2)
@@ -408,22 +483,25 @@ with st.sidebar:
             st.error("Сначала исправьте ошибки сценария:\n" + "\n".join(errors[:5]))
         else:
             name = f"Вариант {len(st.session_state.get('variants', {})) + 1}"
-            sim = st.session_state.get("sim")
-            if sim is None or scenario_json_of(sim.scenario) != scenario_json_of(effective):
-                sim = simulate_scenario(effective, strategy=strategy, with_backups=True)
+            # вариант обязан соответствовать и сценарию, и выбранной стратегии:
+            # иначе подпись стратегии не совпадёт с реальными метриками
+            sim_now = st.session_state.get("sim")
+            if (
+                sim_now is None
+                or scenario_json_of(sim_now.scenario) != scenario_json_of(effective)
+                or sim_now.strategy != strategy
+            ):
+                sim_now = simulate_scenario(effective, strategy=strategy, with_backups=True)
             variants = st.session_state.setdefault("variants", {})
             variants[name] = Variant(
                 name=name,
                 scenario=deep_copy(effective),
                 strategy=strategy,
                 created_at=datetime.now().strftime("%H:%M:%S"),
-                metrics=dict(sim.metrics),
-                global_metrics=sim.global_metrics,
+                metrics=dict(sim_now.metrics),
+                global_metrics=sim_now.global_metrics,
             )
-            st.toast(f"Сохранено: {name}")
-
-    if st.session_state.get("stale"):
-        st.warning("Параметры изменены — требуется пересчёт.")
+            st.toast(f"Сохранено: {name} (стратегия: {STRATEGY_LABELS[strategy].split(' (')[0]})")
 
 
 # ---------------------------------------------------------------------------
@@ -431,6 +509,16 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 
 effective, effective_errors = build_effective()
+sim_prev = st.session_state.get("sim")
+is_stale = (
+    sim_prev is None
+    or scenario_json_of(sim_prev.scenario) != scenario_json_of(effective)
+    or sim_prev.strategy != strategy
+)
+if is_stale and sim_prev is not None and not do_run:
+    st.sidebar.warning("Параметры изменены — результаты ниже относятся к предыдущему расчёту. "
+                       "Нажмите «▶ Пересчитать».")
+
 if do_run or (st.session_state.get("autorun") and st.session_state.get("sim") is None):
     if effective_errors:
         st.error("Сценарий не прошёл проверку:\n" + "\n".join(f"• {e}" for e in effective_errors[:12]))
@@ -515,10 +603,13 @@ if tab_choice == "Обзор":
             unsafe_allow_html=True,
         )
     g = sim.global_metrics
+    total_changes = sum(m.route_change_count for m in sim.metrics.values())
     st.info(
         f"**Сводка:** min доступность по пунктам — **{fmt_pct(g.min_availability)}**, "
         f"средняя — **{fmt_pct(g.mean_availability)}**, худший максимальный перерыв — "
-        f"**{g.worst_max_outage_s} с**, цель достигнута для **{g.target_met_clients} из {g.total_clients}** пунктов."
+        f"**{g.worst_max_outage_s} с**, цель достигнута для **{g.target_met_clients} из {g.total_clients}** пунктов. "
+        f"Перестроений маршрута за сутки: **{total_changes}** — конфигурации с равной доступностью "
+        f"могут отличаться эксплуатационно."
     )
 
     best, why = recommend([*saved.values(), current])
@@ -806,9 +897,15 @@ if tab_choice == "Устойчивость":
                     deep_copy(scenario_used), plane_ids=opt_planes, budget=opt_budget,
                 )
                 opt_sim = simulate_scenario(opt.best_scenario, strategy=sim.strategy, with_backups=True)
-            st.session_state["opt_result"] = (opt, opt_sim)
+            # «оптимизированный» — только если кандидат победил базовый на ПОЛНОЙ сетке
+            base_key = objective_key(sim.metrics, sim.global_metrics)
+            cand_key = objective_key(opt_sim.metrics, opt_sim.global_metrics)
+            st.session_state["opt_result"] = (opt, opt_sim, cand_key < base_key)
         if "opt_result" in st.session_state:
-            opt, opt_sim = st.session_state["opt_result"]
+            opt, opt_sim, confirmed = st.session_state["opt_result"]
+            if not confirmed:
+                st.warning("На полной сетке улучшение не подтверждено: coarse-кандидат не лучше "
+                           "текущей конфигурации по лексикографическому критерию. Кнопка применения скрыта.")
             col_o1, col_o2 = st.columns(2)
             col_o1.metric("Оценок выполнено", opt.evaluations)
             col_o2.metric("Шаг coarse-сетки", f"{opt.coarse_step_s} с")
@@ -837,7 +934,7 @@ if tab_choice == "Устойчивость":
                 ]),
                 use_container_width=True, hide_index=True,
             )
-            if st.button("✔ Использовать оптимизированную конфигурацию"):
+            if confirmed and st.button("✔ Использовать подтверждённую конфигурацию"):
                 for plane in opt.best_scenario["design"]["planes"]:
                     st.session_state[f"raan_{plane['id']}_{nonce}"] = float(plane["raan_deg"])
                     st.session_state[f"phase_{plane['id']}_{nonce}"] = float(plane["phase_deg"])
@@ -854,14 +951,22 @@ if tab_choice == "Экспорт":
     result = build_result(sim)
     routes_total = len(result["routes"])
     st.caption(
-        f"Формат cosmo-A-result-1.0: routes = {routes_total} записей "
-        f"({len(sim.ticks)} отсчётов × {len(sim.clients)} пунктов), effective_scenario включает все изменения."
+        f"Официальный формат cosmo-A-result-1.0 строго по схеме: routes = {routes_total} записей "
+        f"({len(sim.ticks)} отсчётов × {len(sim.clients)} пунктов), effective_scenario включает все изменения. "
+        "Дополнительных top-level полей в result нет — сводки и причины выгружаются отдельным analysis report."
     )
     col_e1, col_e2 = st.columns(2)
     col_e1.download_button(
-        "⬇ Download result JSON",
+        "⬇ Download result JSON (официальная схема)",
         data=dumps_result(result).encode("utf-8"),
         file_name=f"result_{scenario_used.get('meta', {}).get('id', 'scenario')}.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+    col_e2.download_button(
+        "⬇ Download analysis report JSON (сводки и причины)",
+        data=dumps_result(build_analysis_report(sim)).encode("utf-8"),
+        file_name=f"analysis_report_{scenario_used.get('meta', {}).get('id', 'scenario')}.json",
         mime="application/json",
         use_container_width=True,
     )
@@ -908,13 +1013,13 @@ if tab_choice == "О методике":
 
 **Маршрутизация.** Граф на каждом отсчёте строится из `snapshot.edges`:
 спутники + наземные пункты; наземные узлы не ретранслируют (client — только
-источник, gateway — только терминал). Стратегия по умолчанию — детерминированный
-BFS «минимум переходов»: сосед обходится по отсортированным ID, при равенстве
-длины выбирается лексикографически наименьший путь; выбор среди шлюзов — по
-(дистанция, порядок обнаружения, ID). Альтернативная стратегия — «минимум
-суммарной геометрической длины» (релаксация по ключу длина/переходы/путь) —
-показывает вариативность допустимых маршрутов. Дополнительно ищется резервный
-путь, не пересекающийся с основным по спутникам.
+источник, gateway — только терминал). Стратегия по умолчанию — **минимум
+суммарной геометрической длины**: маршрут опирается на реальные расстояния
+модели (ключ: длина км → число рёбер → путь), выбор полностью
+детерминирован. Baseline-альтернатива — BFS «минимум переходов»
+(лексикографический tie-break); достижимость у стратегий идентична.
+Дополнительно ищется резервный путь, не пересекающийся с основным по
+спутникам.
 
 **Метрики (по «Описанию данных»).** Для каждого пункта: доля отсчётов с видимым
 активным спутником (visibility), доля отсчётов со сквозным маршрутом
@@ -928,7 +1033,24 @@ BFS «минимум переходов»: сосед обходится по о
 max mean-доступность → min худшего перерыва → min среднего числа переходов.
 90% — целевой ориентир (линия на графиках), не жёсткое ограничение.
 
-**Качество.** 77 pytest-тестов: валидация (с путями полей), сетка, границы
+**RAAN и фазирование — проектные параметры.** Мы не управляем положением
+спутника в полёте: конфигурация плоскостей задаётся до развёртывания, после
+вывода аппараты движутся по ней. Изменение RAAN/фазы в сервисе — это
+сравнение проектных вариантов, каждый со своим полным пересчётом. В
+конкурсном сценарии один целевой шлюз; ядро при этом универсально и
+поддерживает несколько шлюзов.
+
+**Оцениваем и перестроения маршрута.** Помимо доли доступности сервис
+считает число смен маршрута (`route_change_count`): конфигурации с равной
+доступностью могут отличаться эксплуатационно.
+
+**Что не входит в базовую модель** (по документу «Описание данных»):
+рельеф и локальный горизонт, городская застройка, многолучёвость,
+радиочастотный бюджет и энергетика. Следующий этап развития —
+site-specific horizon mask (рельеф/urban obstruction) поверх официальной
+модели возвышения без изменения ядра расчёта.
+
+**Качество.** 86 pytest-теста: валидация (с путями полей), сетка, границы
 отказов, маршрутизация на синтетических графах, метрики, экспорт (число записей
 = отсчёты × пункты, каждый путь допустим в свой момент), parity собственного
 движка с официальным `geometry.py`, регрессионные числа по 4 сценариям.

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import json
 import math
 from dataclasses import dataclass
@@ -40,8 +39,8 @@ STRATEGY_MIN_HOPS = "min_hops"
 STRATEGY_MIN_DISTANCE = "min_distance"
 
 STRATEGY_LABELS: dict[str, str] = {
-    STRATEGY_MIN_HOPS: "Минимум переходов (BFS, по умолчанию)",
-    STRATEGY_MIN_DISTANCE: "Минимум геометрической длины (Dijkstra)",
+    STRATEGY_MIN_DISTANCE: "Минимум суммарной длины (Dijkstra, по умолчанию)",
+    STRATEGY_MIN_HOPS: "Минимум переходов (BFS, baseline)",
 }
 
 
@@ -88,11 +87,6 @@ def deep_copy(scenario: dict[str, Any]) -> dict[str, Any]:
 def canonical_json(payload: Any) -> str:
     """Стабильное JSON-представление для ключей кэша и хэшей."""
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
-
-
-def scenario_hash(scenario: dict[str, Any]) -> str:
-    """Стабильный хэш сценария (ключ кэша расчётов)."""
-    return hashlib.sha256(canonical_json(scenario).encode("utf-8")).hexdigest()
 
 
 def hhmmss(seconds: float) -> str:

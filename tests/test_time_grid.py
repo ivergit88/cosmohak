@@ -62,3 +62,14 @@ def test_launch_stage_filters_satellites(small_scenario):
     flags = active_flags(modified, 0)
     assert flags["T2"] is True
     assert flags["T3"] is False
+
+
+def test_tick_at_floors_to_lower_tick(small_scenario):
+    """t=190 при шаге 100 → нижний отсчёт 100 (не округление вверх до 200)."""
+    from cosmo.simulation import simulate_scenario
+
+    sim = simulate_scenario(small_scenario, with_backups=False)
+    assert sim.step_s() == 100
+    assert sim.ticks[sim.tick_at(190)] == 100
+    assert sim.ticks[sim.tick_at(200)] == 200
+    assert sim.ticks[sim.tick_at(-5)] == 0  # защита от отрицательных

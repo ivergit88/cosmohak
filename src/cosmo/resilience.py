@@ -200,8 +200,3 @@ def reason_summary(sim: SimulationResult) -> dict[str, int]:
                 label = STATUS_LABELS.get(code, str(code))
                 summary[label] = summary.get(label, 0) + 1
     return dict(sorted(summary.items(), key=lambda kv: -kv[1]))
-
-
-def unreachable_status() -> int:
-    """Код статуса «маршрута нет» для документирования."""
-    return STATUS_ISL_DISCONNECTED

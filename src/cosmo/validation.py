@@ -122,7 +122,7 @@ def _validate_environment(env: dict[str, Any], errors: list[str]) -> None:
             errors.append(f"environment.horizon_s = {horizon}: горизонт должен быть положительным")
         if step > horizon:
             errors.append(f"environment.step_s = {step} больше environment.horizon_s = {horizon}")
-        elif horizon % step != 0:
+        elif step > 0 and horizon % step != 0:
             errors.append(
                 f"environment.horizon_s = {horizon} не кратен environment.step_s = {step}"
             )

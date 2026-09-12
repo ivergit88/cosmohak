@@ -21,7 +21,7 @@ from .graph import LinkGraph, build_link_graph
 from .metrics import ClientMetrics, GlobalMetrics, compute_client_metrics, compute_global_metrics
 from .models import (
     STATUS_CONNECTED,
-    STRATEGY_MIN_HOPS,
+    STRATEGY_MIN_DISTANCE,
     clients_of,
     gateways_of,
     satellite_ids,
@@ -70,15 +70,18 @@ class SimulationResult:
         return int(self.scenario["environment"]["step_s"])
 
     def tick_at(self, t_s: int) -> int:
-        """Индекс отсчёта по времени (ближайший нижний)."""
+        """Индекс отсчёта по времени: ближайший нижний дискретный отсчёт.
+
+        Например, при step=120: t=190 → отсчёт 120 (floor, а не округление вверх).
+        """
         step = self.step_s()
-        idx = int(round(t_s / step))
+        idx = int(t_s // step)
         return max(0, min(len(self.ticks) - 1, idx))
 
 
 def simulate_scenario(
     scenario: dict[str, Any],
-    strategy: str = STRATEGY_MIN_HOPS,
+    strategy: str = STRATEGY_MIN_DISTANCE,
     with_backups: bool = True,
     validate_routes: bool = False,
     progress_cb: Callable[[int, int], None] | None = None,

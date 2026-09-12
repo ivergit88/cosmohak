@@ -7,6 +7,7 @@ import json
 import pytest
 
 from cosmo.export import (
+    build_analysis_report,
     build_result,
     dumps_result,
     dumps_scenario,
@@ -120,8 +121,18 @@ def test_metrics_csv_content(small_sim):
 
 def test_full_scenario_export_route_count(scenarios):
     sim = simulate_scenario(scenarios["01_full_constellation.json"], with_backups=False)
-    result = build_result(sim, include_summary=True)
+    result = build_result(sim)
     assert len(result["routes"]) == 720 * 3
     assert validate_result_structure(result) == []
-    # обязательные поля остаются корректными при добавлении summary/metadata
-    assert "summary" in result and "metadata" in result
+    # строгая официальная схема: только обязательные top-level поля
+    assert set(result) == {"schema_version", "effective_scenario", "routes"}
+    report = build_analysis_report(sim)
+    assert report["routing_strategy"] == "min_distance"
+    assert set(report["clients"]) == set(sim.clients)
+
+
+def test_result_rejects_extra_top_level_fields(small_sim):
+    result = build_result(small_sim)
+    result["routing_strategy"] = "min_distance"
+    problems = validate_result_structure(result)
+    assert any("лишние top-level поля" in p for p in problems)

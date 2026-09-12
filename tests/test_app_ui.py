@@ -116,3 +116,27 @@ def test_resilience_section_renders(app_test):
     assert not at.exception
     body = all_text(at)
     assert "Критичность" in body
+
+
+def test_save_variant_uses_current_strategy(app_test):
+    """Смена стратегии + сохранение: метрики варианта обязаны соответствовать min_distance."""
+    at = app_test
+    at.sidebar.selectbox(key=None)  # sanity: коллекция доступна
+    strategy_box = [sb for sb in at.sidebar.selectbox if sb.label == "Стратегия маршрутизации"][0]
+    strategy_box.set_value("min_distance")
+    save = [b for b in at.sidebar.button if "Сохранить вариант" in (b.label or "")]
+    save[0].click()
+    at.run()
+    assert not at.exception
+    variants = at.session_state["variants"]
+    assert list(variants) == ["Вариант 1"]
+    assert variants["Вариант 1"].strategy == "min_distance"
+
+
+def test_stale_warning_after_edits(app_test):
+    """Изменение параметра без пересчёта помечает состояние как устаревшее."""
+    at = app_test
+    [sb for sb in at.sidebar.selectbox if sb.label == "Стратегия маршрутизации"][0].set_value("min_hops")
+    at.run()
+    warnings_text = " ".join(str(w.value) for w in at.warning)
+    assert "предыдущему расчёту" in warnings_text
