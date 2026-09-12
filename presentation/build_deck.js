@@ -2,8 +2,13 @@
    Структура по рекомендации трекера: 6 основных слайдов + 5 backup для вопросов.
    Сборка: node build_deck.js -> kosmo-nizni_klodiki_148.pptx (16:9, статичные слайды). */
 const path = require("path");
-const globalRoot = "C:/Users/Administrator/AppData/Roaming/npm/node_modules";
-const pptxgen = require(path.join(globalRoot, "pptxgenjs"));
+// pptxgenjs ставится глобально (npm i -g pptxgenjs), отсюда fallback на глобальные node_modules
+let pptxgen;
+try {
+  pptxgen = require("pptxgenjs");
+} catch (_) {
+  pptxgen = require(path.join(process.env.APPDATA || "", "npm/node_modules", "pptxgenjs"));
+}
 
 const W = 13.33, H = 7.5, M = 0.6;
 const BG_DARK = "0B1626", BG_LIGHT = "F4F7FA";
