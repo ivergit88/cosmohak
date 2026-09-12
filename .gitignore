@@ -9,3 +9,7 @@ venv/
 .DS_Store
 presentation/preview/
 upload/
+*.exe
+*.zip
+*.log
+scripts/bore.log
