@@ -1,7 +1,7 @@
 @echo off
 rem Сторожевой скрипт сервера решения: поднимает Docker-контейнер и bore-туннель,
 rem если они не запущены. Вызывается планировщиком каждые 5 минут.
-cd /d "C:\Users\Administrator\Desktop\cosmohak\scripts"
+cd /d "%~dp0"
 
 rem --- контейнер с приложением ---
 docker ps --format "{{.Names}}" 2>nul | find /I "cosmo" >nul

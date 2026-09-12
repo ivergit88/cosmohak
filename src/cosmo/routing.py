@@ -237,10 +237,11 @@ def find_route_min_distance(g: LinkGraph, client_id: str, forbidden: frozenset[s
 def find_route(g: LinkGraph, client_id: str, strategy: str = STRATEGY_MIN_DISTANCE) -> RouteResult:
     """Диспетчер стратегии маршрутизации.
 
-    По умолчанию — минимум суммарной геометрической длины (Dijkstra-подход
-    с детерминированным tie-break): маршрут опирается на реальные расстояния
-    модели, а не только на число рёбер. BFS «минимум переходов» — baseline.
-    Достижимость (availability) у стратегий совпадает.
+    По умолчанию — взвешенный поиск кратчайшего пути по суммарной
+    геометрической длине (релаксация с детерминированным tie-break):
+    маршрут опирается на реальные расстояния модели, а не только на число
+    рёбер. BFS «минимум переходов» — baseline. Достижимость (availability)
+    у стратегий совпадает.
     """
     if strategy == STRATEGY_MIN_DISTANCE:
         return find_route_min_distance(g, client_id)

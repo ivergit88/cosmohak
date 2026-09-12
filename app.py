@@ -468,7 +468,8 @@ with st.sidebar:
         [STRATEGY_MIN_DISTANCE, STRATEGY_MIN_HOPS],
         format_func=lambda v: STRATEGY_LABELS[v],
         help="По умолчанию — минимум суммарной геометрической длины "
-             "(Dijkstra по реальным расстояниям модели, детерминированный tie-break). "
+             "(взвешенный поиск кратчайшего пути по реальным расстояниям модели, "
+             "детерминированный tie-break). "
              "«Минимум переходов» — baseline для сравнения; достижимость совпадает.",
     )
     do_run = st.button("▶ Пересчитать", type="primary", use_container_width=True)
@@ -794,7 +795,7 @@ if tab_choice == "Устойчивость":
     else:
         st.success("Перерывов нет: полный маршрут существует на всех отсчётах для всех пунктов.")
 
-    st.subheader("Критичность спутников (single points of failure)")
+    st.subheader("Критичность спутников (single-satellite outage analysis)")
     st.caption(
         "Для каждого спутника моделируется его отсутствие на всём горизонте без пересчёта орбитальной "
         "геометрии; ранжирование — по падению минимальной доступности, затем по росту худшего перерыва. "
@@ -895,6 +896,7 @@ if tab_choice == "Устойчивость":
             with st.spinner("Поиск конфигурации…"):
                 opt = optimize_configuration(
                     deep_copy(scenario_used), plane_ids=opt_planes, budget=opt_budget,
+                    strategy=sim.strategy,
                 )
                 opt_sim = simulate_scenario(opt.best_scenario, strategy=sim.strategy, with_backups=True)
             # «оптимизированный» — только если кандидат победил базовый на ПОЛНОЙ сетке
@@ -1050,7 +1052,7 @@ max mean-доступность → min худшего перерыва → min 
 site-specific horizon mask (рельеф/urban obstruction) поверх официальной
 модели возвышения без изменения ядра расчёта.
 
-**Качество.** 86 pytest-теста: валидация (с путями полей), сетка, границы
+**Качество.** 131 pytest-теста: валидация (с путями полей), сетка, границы
 отказов, маршрутизация на синтетических графах, метрики, экспорт (число записей
 = отсчёты × пункты, каждый путь допустим в свой момент), parity собственного
 движка с официальным `geometry.py`, регрессионные числа по 4 сценариям.

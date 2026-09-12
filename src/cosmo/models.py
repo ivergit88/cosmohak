@@ -39,7 +39,7 @@ STRATEGY_MIN_HOPS = "min_hops"
 STRATEGY_MIN_DISTANCE = "min_distance"
 
 STRATEGY_LABELS: dict[str, str] = {
-    STRATEGY_MIN_DISTANCE: "Минимум суммарной длины (Dijkstra, по умолчанию)",
+    STRATEGY_MIN_DISTANCE: "Минимум суммарной длины линий (по умолчанию)",
     STRATEGY_MIN_HOPS: "Минимум переходов (BFS, baseline)",
 }
 

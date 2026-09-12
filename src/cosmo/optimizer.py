@@ -19,7 +19,7 @@ from typing import Any, Callable
 
 from .comparison import objective_key
 from .metrics import ClientMetrics, GlobalMetrics
-from .models import deep_copy
+from .models import STRATEGY_MIN_DISTANCE, deep_copy
 from .simulation import SimulationResult, simulate_scenario
 
 logger = logging.getLogger(__name__)
@@ -77,10 +77,12 @@ def _apply_params(scenario: dict[str, Any], params: dict[str, list[float]]) -> d
 
 
 def _evaluate(
-    coarse_base: dict[str, Any], params: dict[str, list[float]]
+    coarse_base: dict[str, Any],
+    params: dict[str, list[float]],
+    strategy: str,
 ) -> tuple[tuple, dict[str, ClientMetrics], GlobalMetrics]:
     candidate = _apply_params(coarse_base, params)
-    sim = simulate_scenario(candidate, with_backups=False)
+    sim = simulate_scenario(candidate, strategy=strategy, with_backups=False)
     return objective_key(sim.metrics, sim.global_metrics), sim.metrics, sim.global_metrics
 
 
@@ -90,6 +92,7 @@ def optimize_configuration(
     budget: int = 30,
     coarse_multiplier: int = 4,
     seed: int = 20260912,
+    strategy: str = STRATEGY_MIN_DISTANCE,
     progress_cb: Callable[[int, int], None] | None = None,
 ) -> OptimizationResult:
     """Подбирает RAAN/phase выбранных плоскостей за ограниченный бюджет оценок.
@@ -107,7 +110,7 @@ def optimize_configuration(
     coarse_base = _coarse_scenario(scenario, coarse_multiplier)
     rng = random.Random(seed)
     current = _params_of(scenario, plane_ids)
-    best_key, _m, _g = _evaluate(coarse_base, current)
+    best_key, _m, _g = _evaluate(coarse_base, current, strategy)
     baseline_key = best_key
     evaluations = 1
     history: list[tuple[str, tuple]] = [("baseline", best_key)]
@@ -122,7 +125,7 @@ def optimize_configuration(
         for pid in plane_ids:
             candidate[pid][0] = (candidate[pid][0] + rng.choice(OFFSET_STEPS) * rng.choice((1, 2))) % 360.0
             candidate[pid][1] = (candidate[pid][1] + rng.choice(OFFSET_STEPS)) % 360.0
-        key, _m, _g = _evaluate(coarse_base, candidate)
+        key, _m, _g = _evaluate(coarse_base, candidate, strategy)
         evaluations += 1
         history.append((f"random:{evaluations}", key))
         if key < best_key:
@@ -139,7 +142,7 @@ def optimize_configuration(
                         break
                     candidate = {p: list(v) for p, v in current.items()}
                     candidate[pid][axis] = (candidate[pid][axis] + offset) % 360.0
-                    key, _m, _g = _evaluate(coarse_base, candidate)
+                    key, _m, _g = _evaluate(coarse_base, candidate, strategy)
                     evaluations += 1
                     history.append((f"coord:{pid}:{'raan' if axis == 0 else 'phase'}:{offset:+.1f}", key))
                     if key < best_key:
