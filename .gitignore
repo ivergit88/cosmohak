@@ -7,3 +7,4 @@ venv/
 /result*.json
 /effective*.json
 .DS_Store
+presentation/preview/
