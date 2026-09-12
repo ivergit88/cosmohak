@@ -170,17 +170,18 @@ const outage = [
   ["Полная группировка (этап 3)", "96.7–98.9%", "перерывы 2–8 мин", "2E7D32"],
   ["Вторая очередь (этап 2)", "61.8–66.0%", "перерывы до 5.5 ч", "C62828"],
   ["Первая очередь (этап 1)", "12.6–27.2%", "перерывы до 13.3 ч", "C62828"],
-  ["10 отказов · МСC 2000 км", "62.2–82.5%", "перерывы до 3 ч", "C62828"],
+  ["10 аппаратов в отказе", "79.3–82.5%", "перерывы до 24 мин", "C62828"],
+  ["МСC 2000 км", "62.2–77.5%", "перерывы до 2 ч 58 мин", "C62828"],
 ];
 s.addText("Где цель достигается", { x: 8.6, y: 2.55, w: 4.2, h: 0.35, fontFace: F, fontSize: 15, bold: true, color: TEXT_D, margin: 0 });
 outage.forEach((r, i) => {
-  const y = 3.0 + i * 0.92;
+  const y = 2.95 + i * 0.8;
   s.addText(r[0], { x: 8.6, y: y, w: 4.2, h: 0.3, fontFace: F, fontSize: 13, bold: true, color: TEXT_D, margin: 0 });
   s.addText([
     { text: r[1], options: { bold: true, color: r[3] } },
     { text: "  ·  " + r[2], options: { color: MUTED } },
   ], { x: 8.6, y: y + 0.3, w: 4.2, h: 0.3, fontFace: F, fontSize: 12, margin: 0 });
-  if (i < 3) s.addShape(pres.shapes.LINE, { x: 8.6, y: y + 0.72, w: 4.1, h: 0, line: { color: "DFE7EE", width: 1 } });
+  if (i < 4) s.addShape(pres.shapes.LINE, { x: 8.6, y: y + 0.66, w: 4.1, h: 0, line: { color: "DFE7EE", width: 1 } });
 });
 srcLine(s, "Расчёт команды по официальному geometry.py: 720 отсчётов, стратегия «минимум длины»; числа зафиксированы регрессионными тестами", false);
 
@@ -191,7 +192,7 @@ orbit(s, false);
 titleBar(s, "Устойчивость", "Не только процент доступности — а почему сеть теряет связь");
 s.addText("S44", { x: M, y: 1.9, w: 3.4, h: 1.25, fontFace: F, fontSize: 64, bold: true, color: ACCENT, margin: 0 });
 s.addText([
-  { text: "самый критичный аппарат\nпо single-outage анализу:\n", options: { bold: true, color: TEXT_D } },
+  { text: "№1 в ранжировании критичности\nпо single-outage анализу:\n", options: { bold: true, color: TEXT_D } },
   { text: "отказ снижает минимальную\nдоступность на 2.36 п.п., затрагивает\nвсе три пункта, 45 отсчётов теряют\nмаршрут", options: { color: MUTED } },
 ], { x: M, y: 3.2, w: 4.0, h: 2.2, fontFace: F, fontSize: 13, margin: 0, lineSpacing: 16 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 4.95, y: 1.8, w: 7.8, h: 4.8, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.08, shadow: { type: "outer", color: "1B2A3A", blur: 8, offset: 2, angle: 90, opacity: 0.14 } });
@@ -217,7 +218,7 @@ s.addShape(pres.shapes.OVAL, { x: -3.2, y: 2.4, w: 9.5, h: 9.5, fill: { type: "n
 s.addText("РЕЗУЛЬТАТ", { x: M, y: 0.95, w: 10, h: 0.35, fontFace: F, fontSize: 13, bold: true, color: PRIMARY_SOFT, charSpacing: 3, margin: 0 });
 const res = [
   ["3 из 3", "пунктов выше целевого\nуровня в базовой полной\nконфигурации"],
-  ["4 из 4", "категорий причин разрыва —\nкаждый перерыв имеет\nобъяснение"],
+  ["4", "категории причин разрыва —\nкаждый перерыв имеет\nобъяснение"],
   ["A vs B", "конфигурации и отказы\nсравниваются до принятия\nрешения"],
 ];
 res.forEach((r, i) => {
@@ -226,12 +227,12 @@ res.forEach((r, i) => {
   s.addText(r[1], { x: x, y: 2.3, w: 2.95, h: 1.0, fontFace: F, fontSize: 12.5, color: TEXT_L, margin: 0 });
 });
 s.addShape(pres.shapes.LINE, { x: M, y: 3.45, w: 12.1, h: 0, line: { color: PRIMARY_MID, width: 1 } });
-s.addText("РЕКОМЕНДАЦИЯ", { x: M, y: 3.7, w: 10, h: 0.35, fontFace: F, fontSize: 13, bold: true, color: PRIMARY_SOFT, charSpacing: 3, margin: 0 });
-s.addText("Среди исследованных сценариев и проверенных конфигураций ≥90%\nдля всех трёх пунктов обеспечивает полная группировка при ISL 3000 км", {
-  x: M, y: 4.08, w: 9.4, h: 1.2, fontFace: F, fontSize: 22, bold: true, color: TEXT_L, margin: 0, lineSpacing: 28,
+s.addText("РЕКОМЕНДАЦИЯ", { x: M, y: 3.58, w: 10, h: 0.3, fontFace: F, fontSize: 13, bold: true, color: PRIMARY_SOFT, charSpacing: 3, margin: 0 });
+s.addText("Среди проверенных этапов развертывания и стресс-сценариев целевой\nуровень ≥90% для всех трёх пунктов достигается только на этапе 3\nпри штатной дальности ISL 3000 км", {
+  x: M, y: 3.92, w: 9.4, h: 1.2, fontFace: F, fontSize: 20, bold: true, color: TEXT_L, margin: 0, lineSpacing: 28,
 });
 s.addText("96.7–98.9% доступности  ·  каждый разрыв воспроизводим в сервисе и в тестах", {
-  x: M, y: 5.32, w: 9.4, h: 0.4, fontFace: F, fontSize: 14, color: MUTED_L, margin: 0,
+  x: M, y: 5.18, w: 9.4, h: 0.35, fontFace: F, fontSize: 13.5, color: MUTED_L, margin: 0,
 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 10.15, y: 4.75, w: 2.35, h: 2.35, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.06 });
 s.addImage({ path: IMG("qr_service.png"), x: 10.28, y: 4.88, w: 2.1, h: 2.1 });
@@ -296,7 +297,7 @@ s.addText(repro.map((t, i) => ({ text: t, options: { bullet: { code: "25B8", ind
 s = pres.addSlide();
 s.background = { color: BG_LIGHT };
 orbit(s, false);
-titleBar(s, "Backup · Экспорт", "Строгий официальный формат — и отдельный файл анализа");
+titleBar(s, "Backup · Экспорт", "Минимальный официальный формат + отдельный файл анализа");
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: M, y: 1.85, w: 5.9, h: 4.6, fill: { color: "0E1B2A" }, line: { type: "none" }, rectRadius: 0.08 });
 s.addText([
   { text: '{\n', options: { color: PRIMARY_SOFT, breakLine: true } },
@@ -310,8 +311,8 @@ s.addText([
   { text: '  ]', options: { color: PRIMARY_SOFT, breakLine: true } },
   { text: '}', options: { color: PRIMARY_SOFT } },
 ], { x: M + 0.35, y: 2.1, w: 5.3, h: 3.8, fontFace: "Consolas", fontSize: 13, margin: 0, lineSpacing: 17 });
-s.addText("result.json — ровно обязательные поля, без дополнений: структура критична", {
-  x: M + 0.35, y: 5.95, w: 5.4, h: 0.5, fontFace: F, fontSize: 11.5, color: MUTED, margin: 0,
+s.addText("Расширения официальный формат допускает — мы сознательно вынесли их в analysis_report.json", {
+  x: M + 0.35, y: 5.7, w: 5.4, h: 0.55, fontFace: F, fontSize: 11.5, color: MUTED, margin: 0,
 });
 const expRows = [
   ["Одна запись на «отсчёт × пункт»", "пустой path — маршрут отсутствует; в базовом сценарии 2160 записей"],
@@ -330,7 +331,7 @@ expRows.forEach((r, i) => {
 s = pres.addSlide();
 s.background = { color: BG_LIGHT };
 orbit(s, false);
-titleBar(s, "Backup · Критичность и резерв", "Single points of failure и запас прочности сети");
+titleBar(s, "Backup · Критичность и резерв", "Критичные аппараты при одиночном отказе и запас прочности сети");
 s.addText("Топ критичности (полная группировка, single-outage анализ)", { x: M, y: 1.75, w: 7.0, h: 0.4, fontFace: F, fontSize: 15, bold: true, color: TEXT_D, margin: 0 });
 const crit = [
   ["S44", "Δmin 2.36 п.п.", "Δmean 2.08 п.п.", "45 отсчётов"],
@@ -347,7 +348,7 @@ s.addText("Все три пункта затронуты у каждого из 
   x: M, y: 4.85, w: 6.9, h: 1.0, fontFace: F, fontSize: 13, color: TEXT_D, margin: 0,
 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 7.85, y: 1.75, w: 4.9, h: 4.75, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.08, shadow: { type: "outer", color: "1B2A3A", blur: 8, offset: 2, angle: 90, opacity: 0.14 } });
-s.addText("Резервные пути", { x: 8.15, y: 2.0, w: 4.3, h: 0.4, fontFace: F, fontSize: 16, bold: true, color: TEXT_D, margin: 0 });
+s.addText("Резервные пути", { x: 8.15, y: 2.15, w: 4.3, h: 0.4, fontFace: F, fontSize: 16, bold: true, color: TEXT_D, margin: 0 });
 const bk = [
   "ищется путь, не пересекающийся с основным по спутникам (node-disjoint)",
   "доля времени с резервом — метрика запаса прочности каждого пункта",
@@ -355,7 +356,7 @@ const bk = [
   "переключения маршрутов считаются аналитикой (route changes), на доступность не влияют",
 ];
 s.addText(bk.map((t, i) => ({ text: t, options: { bullet: { code: "25B8", indent: 12 }, breakLine: i < bk.length - 1 } })), {
-  x: 8.15, y: 2.5, w: 4.35, h: 3.7, fontFace: F, fontSize: 13, color: TEXT_D, paraSpaceAfter: 10, margin: 0,
+  x: 8.15, y: 2.6, w: 4.35, h: 3.8, fontFace: F, fontSize: 13, color: TEXT_D, paraSpaceAfter: 12, margin: 0, valign: "top",
 });
 
 /* ============================== BACKUP 5: РАЗВИТИЕ ============================== */

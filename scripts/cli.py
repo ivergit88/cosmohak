@@ -59,7 +59,7 @@ def main() -> int:
     print(f"MIN доступность: {fmt_pct(g.min_availability)}; MEAN: {fmt_pct(g.mean_availability)}; "
           f"худший перерыв: {g.worst_max_outage_s} с; цель: {g.target_met_clients}/{g.total_clients}")
 
-    result = build_result(sim, include_summary=True)
+    result = build_result(sim)
     problems = validate_result_structure(result)
     if problems:
         print("ПРОБЛЕМЫ РЕЗУЛЬТАТА:", problems)

@@ -131,8 +131,10 @@ def test_full_scenario_export_route_count(scenarios):
     assert set(report["clients"]) == set(sim.clients)
 
 
-def test_result_rejects_extra_top_level_fields(small_sim):
+def test_result_allows_extra_top_level_fields(small_sim):
+    """Официальный формат допускает расширения; наш экспорт минимален."""
     result = build_result(small_sim)
+    assert validate_result_structure(result) == []
     result["routing_strategy"] = "min_distance"
-    problems = validate_result_structure(result)
-    assert any("лишние top-level поля" in p for p in problems)
+    assert validate_result_structure(result) == []
+    assert set(build_result(small_sim)) == {"schema_version", "effective_scenario", "routes"}

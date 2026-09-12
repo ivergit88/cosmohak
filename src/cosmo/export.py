@@ -94,9 +94,8 @@ def validate_result_structure(result: dict[str, Any], expected_routes: int | Non
     problems: list[str] = []
     if result.get("schema_version") != RESULT_SCHEMA_VERSION:
         problems.append(f"schema_version={result.get('schema_version')!r}")
-    extra = set(result) - {"schema_version", "effective_scenario", "routes"}
-    if extra:
-        problems.append(f"лишние top-level поля официального result: {sorted(extra)}")
+    # официальный формат допускает дополнительные поля; наш build_result
+    # намеренно их не добавляет (минимально совместимый экспорт)
     scenario = result.get("effective_scenario")
     if not isinstance(scenario, dict) or "environment" not in scenario or "design" not in scenario:
         problems.append("effective_scenario отсутствует или неполон")

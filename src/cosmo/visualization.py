@@ -237,7 +237,7 @@ def connectivity_over_time(sim: SimulationResult) -> go.Figure:
 
 
 def ground_track(scenario: dict[str, Any], sim: SimulationResult, t_s: int) -> go.Figure:
-    """Карта подспутниковых точек (модель не вращает Землю) и наземных пунктов."""
+    """Карта подспутниковых точек в системе координат, связанной с Землёй."""
     planes: dict[str, list[str]] = {}
     pmap = {s["id"]: s["plane_id"] for s in scenario["design"]["satellites"]}
     for sid, plane in pmap.items():
@@ -249,7 +249,7 @@ def ground_track(scenario: dict[str, Any], sim: SimulationResult, t_s: int) -> g
         lats: list[float] = []
         lons: list[float] = []
         for t in sim.ticks[::step]:
-            ids, xyz, _fixed = geometry_adapter.positions(scenario, t)
+            ids, _inertial, xyz = geometry_adapter.positions(scenario, t)
             for sid in sids:
                 k = ids.index(sid)
                 v = xyz[k]
@@ -262,7 +262,7 @@ def ground_track(scenario: dict[str, Any], sim: SimulationResult, t_s: int) -> g
             line=dict(width=1), opacity=0.6,
         ))
     # текущие позиции
-    ids, xyz, _fixed = geometry_adapter.positions(scenario, t_s)
+    ids, _inertial, xyz = geometry_adapter.positions(scenario, t_s)
     cur_lat, cur_lon, cur_text = [], [], []
     for k, sid in enumerate(ids):
         v = xyz[k]
