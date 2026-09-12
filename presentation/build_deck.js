@@ -74,7 +74,7 @@ s.addText("Целевой уровень кейса: ≥90% времени со 
 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 10.15, y: 4.5, w: 2.45, h: 2.3, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.06 });
 s.addImage({ path: IMG("qr_service.png"), x: 10.33, y: 4.6, w: 2.1, h: 2.1 });
-s.addText("Сервис открыт прямо сейчас —\nотсканируйте и попробуйте сами", {
+s.addText("Демо-сервис — откройте\nи попробуйте сами", {
   x: 10.0, y: 6.87, w: 2.75, h: 0.42, fontFace: F, fontSize: 10, color: PRIMARY_SOFT, margin: 0, align: "center",
 });
 s.addShape(pres.shapes.LINE, { x: M, y: 5.0, w: 3.2, h: 0, line: { color: ACCENT, width: 2.5 } });
@@ -93,7 +93,7 @@ s.addText([
   { text: "клиент → спутник → межспутниковая сеть → шлюз.", options: { bold: true, color: TEXT_D } },
 ], { x: M, y: 1.62, w: 12.1, h: 0.85, fontFace: F, fontSize: 17, margin: 0 });
 const acts = [
-  ["Проектируем", "Этап развёртывания, RAAN\nи фазирование, отказы —\nпроектные параметры до запуска", PRIMARY],
+  ["Проектируем", "Этап, RAAN и фазирование —\nпроектные параметры; отказы —\nсценарии проверки устойчивости", PRIMARY],
   ["Проверяем", "Сквозные маршруты по суткам на\n720 отсчётах; каждый разрыв имеет\nобъяснённую причину", PRIMARY],
   ["Выбираем", "Сравнение вариантов по доступности,\nперерывам и устойчивости —\nдо принятия решения", ACCENT],
 ];
@@ -114,7 +114,7 @@ srcLine(s, "По документам кейса: постановка зада�
 /* ============================== 3. ПРОДУКТ ============================== */
 s = pres.addSlide();
 s.background = { color: BG_DARK };
-titleBar(s, "Продукт", "Один экран: конфигурация → состояние сети → рекомендация", true);
+titleBar(s, "Продукт", "Один сервис: конфигурация → состояние сети → рекомендация", true);
 s.addText("① Конфигурация            →        ② Сеть: маршрут или причина разрыва        →        ③ Доступность и рекомендация", {
   x: M, y: 1.58, w: 12.3, h: 0.3, fontFace: F, fontSize: 12, bold: true, color: PRIMARY_SOFT, margin: 0,
 });
@@ -135,7 +135,7 @@ s.addText("3D-схема сети, шкала состояний\nпо всем 
 s = pres.addSlide();
 s.background = { color: BG_LIGHT };
 orbit(s, false);
-titleBar(s, "Результаты", "Полная группировка выдерживает цель — ранняя стадия и стресс-сценарии нет");
+titleBar(s, "Результаты", "Штатная конфигурация достигает цели — этапы 1–2 и стресс-сценарии нет");
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: M, y: 1.62, w: 12.13, h: 0.62, fill: { color: "E3F0E8" }, line: { type: "none" }, rectRadius: 0.06 });
 s.addText([
   { text: "Базовая полная конфигурация: ", options: { color: TEXT_D } },
@@ -173,7 +173,7 @@ const outage = [
   ["10 аппаратов в отказе", "79.3–82.5%", "перерывы до 24 мин", "C62828"],
   ["МСC 2000 км", "62.2–77.5%", "перерывы до 2 ч 58 мин", "C62828"],
 ];
-s.addText("Где цель достигается", { x: 8.6, y: 2.55, w: 4.2, h: 0.35, fontFace: F, fontSize: 15, bold: true, color: TEXT_D, margin: 0 });
+s.addText("Сводка по сценариям", { x: 8.6, y: 2.55, w: 4.2, h: 0.35, fontFace: F, fontSize: 15, bold: true, color: TEXT_D, margin: 0 });
 outage.forEach((r, i) => {
   const y = 2.95 + i * 0.8;
   s.addText(r[0], { x: 8.6, y: y, w: 4.2, h: 0.3, fontFace: F, fontSize: 13, bold: true, color: TEXT_D, margin: 0 });
@@ -193,7 +193,7 @@ titleBar(s, "Устойчивость", "Не только процент дос
 s.addText("S44", { x: M, y: 1.9, w: 3.4, h: 1.25, fontFace: F, fontSize: 64, bold: true, color: ACCENT, margin: 0 });
 s.addText([
   { text: "№1 в ранжировании критичности\nпо single-outage анализу:\n", options: { bold: true, color: TEXT_D } },
-  { text: "отказ снижает минимальную\nдоступность на 2.36 п.п., затрагивает\nвсе три пункта, 45 отсчётов теряют\nмаршрут", options: { color: MUTED } },
+  { text: "отказ снижает минимальную\nдоступность на 2.36 п.п., затрагивает\nвсе три пункта; 45 клиент-отсчетов\nтеряют маршрут", options: { color: MUTED } },
 ], { x: M, y: 3.2, w: 4.0, h: 2.2, fontFace: F, fontSize: 13, margin: 0, lineSpacing: 16 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 4.95, y: 1.8, w: 7.8, h: 4.8, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.08, shadow: { type: "outer", color: "1B2A3A", blur: 8, offset: 2, angle: 90, opacity: 0.14 } });
 s.addText("Что видит инженер", { x: 5.3, y: 2.05, w: 7.1, h: 0.4, fontFace: F, fontSize: 16, bold: true, color: TEXT_D, margin: 0 });
@@ -201,7 +201,7 @@ const resRows = [
   ["Каждый разрыв объяснён", "нет видимого спутника · шлюз в отказе · нет контакта шлюза · разрыв межспутниковой сети"],
   ["Отказ аппарата — сразу эффект", "перестроение маршрута или новый перерыв с точным интервалом [начало; конец)"],
   ["Последствия по каждому пункту", "Δ доступности и перерывов до и после отказа — ещё до принятия решения"],
-  ["Запас прочности", "резервные маршруты, не пересекающиеся с основным, и их доля по времени"],
+  ["Запас прочности", "резервные маршруты без общих внутренних спутников с основным путём"],
 ];
 resRows.forEach((r, i) => {
   const y = 2.6 + i * 0.98;
@@ -228,17 +228,17 @@ res.forEach((r, i) => {
 });
 s.addShape(pres.shapes.LINE, { x: M, y: 3.45, w: 12.1, h: 0, line: { color: PRIMARY_MID, width: 1 } });
 s.addText("РЕКОМЕНДАЦИЯ", { x: M, y: 3.58, w: 10, h: 0.3, fontFace: F, fontSize: 13, bold: true, color: PRIMARY_SOFT, charSpacing: 3, margin: 0 });
-s.addText("Среди проверенных этапов развертывания и стресс-сценариев целевой\nуровень ≥90% для всех трёх пунктов достигается только на этапе 3\nпри штатной дальности ISL 3000 км", {
+s.addText("Среди проверенных этапов и стресс-сценариев цель ≥90%\nдля всех трёх пунктов достигается только на этапе 3\nпри штатной дальности ISL 3000 км", {
   x: M, y: 3.92, w: 9.4, h: 1.2, fontFace: F, fontSize: 20, bold: true, color: TEXT_L, margin: 0, lineSpacing: 28,
 });
-s.addText("96.7–98.9% доступности  ·  каждый разрыв воспроизводим в сервисе и в тестах", {
+s.addText("96.7–98.9% доступности  ·  расчёт воспроизводим в сервисе и автоматических тестах", {
   x: M, y: 5.18, w: 9.4, h: 0.35, fontFace: F, fontSize: 13.5, color: MUTED_L, margin: 0,
 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 10.15, y: 4.75, w: 2.35, h: 2.35, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.06 });
 s.addImage({ path: IMG("qr_service.png"), x: 10.28, y: 4.88, w: 2.1, h: 2.1 });
 s.addText([
   { text: "Команда kosmo-nizni_klodiki_148  ·  ", options: { color: TEXT_L, bold: true } },
-  { text: "github.com/ivergit88/cosmohak  ·  gitverse.ru/hackrus.experts/kosmo-nizni_klodiki_148", options: { color: PRIMARY_SOFT } },
+  { text: "gitverse.ru/hackrus.experts/kosmo-nizni_klodiki_148 — официальный репозиторий решения", options: { color: PRIMARY_SOFT } },
 ], { x: M, y: 6.1, w: 9.4, h: 0.4, fontFace: F, fontSize: 12.5, margin: 0 });
 s.addText("Спасибо! Вопросы?", { x: M, y: 6.55, w: 9.0, h: 0.5, fontFace: F, fontSize: 20, bold: true, color: TEXT_L, margin: 0 });
 
@@ -334,9 +334,9 @@ orbit(s, false);
 titleBar(s, "Backup · Критичность и резерв", "Критичные аппараты при одиночном отказе и запас прочности сети");
 s.addText("Топ критичности (полная группировка, single-outage анализ)", { x: M, y: 1.75, w: 7.0, h: 0.4, fontFace: F, fontSize: 15, bold: true, color: TEXT_D, margin: 0 });
 const crit = [
-  ["S44", "Δmin 2.36 п.п.", "Δmean 2.08 п.п.", "45 отсчётов"],
-  ["S45", "Δmin 2.36 п.п.", "Δmean 1.99 п.п.", "43 отсчёта"],
-  ["S33", "Δmin 2.36 п.п.", "Δmean 1.94 п.п.", "42 отсчёта"],
+  ["S44", "Δmin 2.36 п.п.", "Δmean 2.08 п.п.", "45 клиент-отсч."],
+  ["S45", "Δmin 2.36 п.п.", "Δmean 1.99 п.п.", "43 клиент-отсч."],
+  ["S33", "Δmin 2.36 п.п.", "Δmean 1.94 п.п.", "42 клиент-отсч."],
 ];
 crit.forEach((r, i) => {
   const y = 2.3 + i * 0.78;
