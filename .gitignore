@@ -8,3 +8,4 @@ venv/
 /effective*.json
 .DS_Store
 presentation/preview/
+upload/
