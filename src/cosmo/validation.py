@@ -66,12 +66,29 @@ def validate_scenario(scenario: Any) -> list[str]:
 
     ground = _require_list(scenario.get("ground_sites"), "ground_sites", errors)
     ground_ids = _validate_ground_sites(ground, errors)
-    sat_ids = [s.get("id") for s in design.get("satellites", [])] if isinstance(design, dict) else []
+    raw_sats = design.get("satellites") if isinstance(design, dict) else None
+    sat_ids: set[str] = (
+        {
+            s.get("id")
+            for s in raw_sats
+            if isinstance(s, dict) and isinstance(s.get("id"), str)
+        }
+        if isinstance(raw_sats, list)
+        else set()
+    )
 
     failures = _require_list(scenario.get("failures"), "failures", errors)
     _validate_outages(failures, "failures", "satellite_id", set(sat_ids), env, errors, label="спутника")
     gw_outages = _require_list(scenario.get("gateway_outages"), "gateway_outages", errors)
-    gateway_ids = {g["id"] for g in ground if isinstance(g, dict) and g.get("role") == "gateway"}
+    gateway_ids = {
+        g.get("id")
+        for g in ground
+        if (
+            isinstance(g, dict)
+            and g.get("role") == "gateway"
+            and isinstance(g.get("id"), str)
+        )
+    }
     _validate_outages(gw_outages, "gateway_outages", "gateway_id", gateway_ids, env, errors, label="шлюза")
 
     overlap = ground_ids & set(sat_ids)

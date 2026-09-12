@@ -240,3 +240,54 @@ def test_errors_are_human_readable(small_scenario):
     for e in errors:
         assert any(ch.isdigit() for ch in e) or "." in e  # есть путь/индекс
         assert not e.startswith("Traceback")
+
+
+def test_structurally_broken_json_never_crashes_validator(small_scenario):
+    """Мусорные структуры дают ошибки-строки, а не AttributeError/TypeError/KeyError."""
+    cases = []
+    for broken_sat in (None, 123, "строка", []):
+        sc = scenario_copy(small_scenario)
+        sc["design"]["satellites"].insert(0, broken_sat)
+        cases.append(("satellite=" + type(broken_sat).__name__, sc))
+    sc = scenario_copy(small_scenario)
+    sc["design"]["satellites"][0]["id"] = {}
+    cases.append(("satellite.id={}", sc))
+    sc = scenario_copy(small_scenario)
+    sc["design"]["satellites"][0]["plane_id"] = []
+    cases.append(("plane_id=[]", sc))
+    sc = scenario_copy(small_scenario)
+    sc["ground_sites"][0] = {"role": "gateway", "lat_deg": 0.0, "lon_deg": 0.0}
+    cases.append(("gateway без id", sc))
+    sc = scenario_copy(small_scenario)
+    sc["ground_sites"][0]["id"] = {}
+    cases.append(("gateway.id={}", sc))
+    sc = scenario_copy(small_scenario)
+    sc["ground_sites"][0]["role"] = []
+    cases.append(("role=[]", sc))
+    sc = scenario_copy(small_scenario)
+    sc["design"]["satellites"] = None
+    cases.append(("satellites=null", sc))
+    sc = scenario_copy(small_scenario)
+    del sc["failures"]
+    cases.append(("нет failures", sc))
+    sc = scenario_copy(small_scenario)
+    del sc["gateway_outages"]
+    cases.append(("нет gateway_outages", sc))
+    sc = scenario_copy(small_scenario)
+    sc["failures"] = [{"satellite_id": [], "start_s": 0, "end_s": 100}]
+    cases.append(("failure.id=[]", sc))
+
+    for name, broken in cases:
+        errors = validate_scenario(broken)
+        assert errors, name  # ошибка обязана быть
+        for e in errors:
+            assert isinstance(e, str) and e, name
+
+
+def test_missing_outage_sections_are_errors(small_scenario):
+    sc = scenario_copy(small_scenario)
+    del sc["failures"]
+    assert any("failures" in e for e in validate_scenario(sc))
+    sc = scenario_copy(small_scenario)
+    del sc["gateway_outages"]
+    assert any("gateway_outages" in e for e in validate_scenario(sc))

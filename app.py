@@ -132,8 +132,15 @@ def prime_widgets(scenario: dict, nonce: int) -> None:
     st.session_state[f"meta_title_{nonce}"] = str(scenario_meta(scenario).get("title", ""))
 
 
+def clear_scenario_analytics() -> None:
+    """Убирает результаты аналитик, относящиеся к предыдущему сценарию/расчёту."""
+    for key in ("variants", "crit_rows", "impact_result", "opt_result"):
+        st.session_state.pop(key, None)
+
+
 def load_builtin(filename: str) -> None:
     scenario = load_file(DATA_DIR / filename)
+    clear_scenario_analytics()
     st.session_state["base_scenario"] = scenario
     st.session_state["base_name"] = filename
     st.session_state["nonce"] = st.session_state.get("nonce", 0) + 1
@@ -146,12 +153,6 @@ def load_builtin(filename: str) -> None:
 
 if "nonce" not in st.session_state:
     load_builtin("01_full_constellation.json")
-
-
-def clear_scenario_analytics() -> None:
-    """Убирает результаты аналитик, относящиеся к предыдущему сценарию/расчёту."""
-    for key in ("variants", "crit_rows", "impact_result", "opt_result"):
-        st.session_state.pop(key, None)
 
 base_scenario: dict = st.session_state["base_scenario"]
 nonce: int = st.session_state["nonce"]
