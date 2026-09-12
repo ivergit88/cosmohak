@@ -147,6 +147,12 @@ def load_builtin(filename: str) -> None:
 if "nonce" not in st.session_state:
     load_builtin("01_full_constellation.json")
 
+
+def clear_scenario_analytics() -> None:
+    """Убирает результаты аналитик, относящиеся к предыдущему сценарию/расчёту."""
+    for key in ("variants", "crit_rows", "impact_result", "opt_result"):
+        st.session_state.pop(key, None)
+
 base_scenario: dict = st.session_state["base_scenario"]
 nonce: int = st.session_state["nonce"]
 
@@ -354,6 +360,7 @@ with st.sidebar:
                 st.session_state["sim_scenario"] = None
                 st.session_state["stale"] = True
                 st.session_state["autorun"] = True
+                clear_scenario_analytics()
                 st.rerun()
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             st.error(f"Файл не является корректным JSON (UTF-8): {exc}")
@@ -364,7 +371,11 @@ with st.sidebar:
         "Этап развёртывания (launch_stage)",
         [1, 2, 3],
         key="launch_stage_sel",
-        format_func=lambda v: f"{v} — запущено {v * 16} аппаратов",
+        format_func=lambda v: "{v} — активно {n} из {total} аппаратов".format(
+            v=v,
+            n=sum(1 for _x in base_scenario["design"]["satellites"] if _x["launch_batch"] <= v),
+            total=len(base_scenario["design"]["satellites"]),
+        ),
         help="В расчёте участвуют спутники с launch_batch ≤ launch_stage.",
     )
     for plane in base_scenario["design"]["planes"]:
@@ -474,10 +485,12 @@ with st.sidebar:
     )
     do_run = st.button("▶ Пересчитать", type="primary", use_container_width=True)
     col_r1, col_r2 = st.columns(2)
-    if col_r1.button("↺ Сброс изменений", use_container_width=True, help="Вернуть параметры загруженного сценария"):
+    def _reset_scenario() -> None:
         prime_widgets(base_scenario, nonce)
         st.session_state["stale"] = True
-        st.rerun()
+
+    col_r1.button("↺ Сброс изменений", on_click=_reset_scenario,
+                  use_container_width=True, help="Вернуть параметры загруженного сценария")
     if col_r2.button("💾 Сохранить вариант", use_container_width=True):
         effective, errors = build_effective()
         if errors:
@@ -532,6 +545,9 @@ if do_run or (st.session_state.get("autorun") and st.session_state.get("sim") is
     st.session_state["stale"] = False
     st.session_state["autorun"] = False
     st.session_state["t_slider"] = 0
+    # производные аналитики относятся к предыдущему расчёту
+    for _k in ("crit_rows", "impact_result", "opt_result"):
+        st.session_state.pop(_k, None)
 
 sim = st.session_state.get("sim")
 if sim is None:
@@ -936,12 +952,18 @@ if tab_choice == "Устойчивость":
                 ]),
                 use_container_width=True, hide_index=True,
             )
-            if confirmed and st.button("✔ Использовать подтверждённую конфигурацию"):
-                for plane in opt.best_scenario["design"]["planes"]:
+            def _apply_optimized() -> None:
+                result = st.session_state.get("opt_result")
+                if not result or not result[2]:
+                    return
+                best = result[0].best_scenario
+                for plane in best["design"]["planes"]:
                     st.session_state[f"raan_{plane['id']}_{nonce}"] = float(plane["raan_deg"])
                     st.session_state[f"phase_{plane['id']}_{nonce}"] = float(plane["phase_deg"])
                 st.session_state["stale"] = True
-                st.rerun()
+
+            if confirmed:
+                st.button("✔ Использовать подтверждённую конфигурацию", on_click=_apply_optimized)
 
 
 # ---------------------------------------------------------------------------

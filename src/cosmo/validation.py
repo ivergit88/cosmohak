@@ -68,9 +68,9 @@ def validate_scenario(scenario: Any) -> list[str]:
     ground_ids = _validate_ground_sites(ground, errors)
     sat_ids = [s.get("id") for s in design.get("satellites", [])] if isinstance(design, dict) else []
 
-    failures = _require_list(scenario.get("failures", []), "failures", errors)
+    failures = _require_list(scenario.get("failures"), "failures", errors)
     _validate_outages(failures, "failures", "satellite_id", set(sat_ids), env, errors, label="спутника")
-    gw_outages = _require_list(scenario.get("gateway_outages", []), "gateway_outages", errors)
+    gw_outages = _require_list(scenario.get("gateway_outages"), "gateway_outages", errors)
     gateway_ids = {g["id"] for g in ground if isinstance(g, dict) and g.get("role") == "gateway"}
     _validate_outages(gw_outages, "gateway_outages", "gateway_id", gateway_ids, env, errors, label="шлюза")
 
@@ -177,13 +177,15 @@ def _validate_design(design: dict[str, Any], errors: list[str]) -> None:
             else:
                 sat_ids.add(sid)
             plane_id = sat.get("plane_id")
-            if plane_id not in plane_ids:
+            if not isinstance(plane_id, str) or plane_id not in plane_ids:
                 errors.append(
-                    f'{path}.plane_id = {plane_id!r}: плоскость {plane_id!r} отсутствует в design.planes'
+                    f'{path}.plane_id = {plane_id!r}: плоскость с таким идентификатором отсутствует в design.planes'
                 )
             batch = sat.get("launch_batch")
             if not isinstance(batch, int) or isinstance(batch, bool) or batch not in LAUNCH_BATCHES:
                 errors.append(f"{path}.launch_batch = {batch!r}: допустимы значения 1, 2 или 3")
+            if "launch_batch" not in sat:
+                errors.append(f"{path}.launch_batch: поле отсутствует")
             if not is_finite_number(sat.get("slot_deg")):
                 errors.append(
                     f"{path}.slot_deg = {sat.get('slot_deg')!r}: требуется конечное число"
@@ -206,7 +208,7 @@ def _validate_ground_sites(ground: list[Any], errors: list[str]) -> set[str]:
         else:
             ids.add(gid)
         role = site.get("role")
-        if role in roles:
+        if isinstance(role, str) and role in roles:
             roles[role] += 1
         else:
             errors.append(f'{path}.role = {role!r}: допустимы значения "client" или "gateway"')
@@ -239,7 +241,7 @@ def _validate_outages(
         if not isinstance(outage, dict):
             continue
         oid = outage.get(id_key)
-        if oid not in valid_ids:
+        if not isinstance(oid, str) or oid not in valid_ids:
             errors.append(f"{opath}.{id_key} = {oid!r}: {label} с таким идентификатором отсутствует")
         for key in ("start_s", "end_s"):
             if not is_finite_number(outage.get(key)):
@@ -266,5 +268,8 @@ def ensure_valid(scenario: Any) -> dict[str, Any]:
     errors = validate_scenario(scenario)
     if errors:
         raise ScenarioValidationError(errors)
-    geometry_adapter.validate_official(scenario)
+    try:
+        geometry_adapter.validate_official(scenario)
+    except Exception as exc:  # официальный модуль бросает разные типы
+        raise ScenarioValidationError([f"официальная проверка geometry.validate: {exc}"]) from exc
     return scenario

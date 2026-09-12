@@ -22,16 +22,13 @@ from .simulation import SimulationResult
 
 R_EARTH = 6371.0
 
-_STATUS_ORDER = [0, 4, 3, 2, 1]  # порядок слоёв цветов
-
-
 def _sphere_traces(opacity: float = 0.12, step_deg: int = 15) -> list[go.Trace]:
     """Полупрозрачная сфера Земли + сетка параллелей/меридианов."""
     u = np.linspace(0, 2 * np.pi, 73)
     v = np.linspace(-np.pi / 2, np.pi / 2, 37)
-    x = R_EARTH * np.outer(np.cos(u), np.sin(v))
-    y = R_EARTH * np.outer(np.sin(u), np.sin(v))
-    z = R_EARTH * np.outer(np.ones_like(u), np.cos(v))
+    x = R_EARTH * np.outer(np.cos(u), np.cos(v))
+    y = R_EARTH * np.outer(np.sin(u), np.cos(v))
+    z = R_EARTH * np.outer(np.ones_like(u), np.sin(v))
     surface = go.Surface(
         x=x, y=y, z=z, opacity=opacity, showscale=False,
         colorscale=[[0, "#9fb8cc"], [1, "#9fb8cc"]],
@@ -189,11 +186,13 @@ def timeline_heatmap(sim: SimulationResult, selected_client: str | None = None) 
         for j in range(len(sim.ticks)):
             custom[i][j] = f"{c} · {times[j]}<br>{STATUS_LABELS.get(s.statuses[j], '')}<br>{s.details[j] or ''}"
 
+    # жесткие сегменты: каждый статус занимает ровно 1/5 шкалы, без интерполяции
     colorscale = []
-    for code in _STATUS_ORDER:
-        pos = code / 4.0
-        colorscale.append([max(0.0, pos - 0.001), STATUS_COLORS[code]])
-        colorscale.append([min(1.0, pos + 0.001), STATUS_COLORS[code]])
+    for code in range(5):
+        lo = (code - 0.5) / 5.0
+        hi = (code + 0.5) / 5.0
+        colorscale.append([lo, STATUS_COLORS[code]])
+        colorscale.append([hi, STATUS_COLORS[code]])
 
     fig = go.Figure(
         go.Heatmap(
@@ -244,19 +243,28 @@ def ground_track(scenario: dict[str, Any], sim: SimulationResult, t_s: int) -> g
         planes.setdefault(plane, []).append(sid)
 
     fig = go.Figure()
-    step = max(1, len(sim.ticks) // 360)
-    for plane_id, sids in sorted(planes.items()):
+    step = max(1, len(sim.ticks) // 240)
+    ticks = sim.ticks[::step]
+    # lat/lon по каждому аппарату отдельно: своя траектория на сутки
+    tracks: dict[str, dict[str, tuple[list[float], list[float]]]] = {}
+    for t in ticks:
+        ids, _inertial, xyz = geometry_adapter.positions(scenario, t)
+        for k, sid in enumerate(ids):
+            v = xyz[k]
+            norm = float(np.linalg.norm(v))
+            lat = math.degrees(math.asin(max(-1, min(1, v[2] / norm))))
+            lon = math.degrees(math.atan2(v[1], v[0]))
+            plane = pmap[sid]
+            entry = tracks.setdefault(plane, {}).setdefault(sid, ([], []))
+            entry[0].append(lat)
+            entry[1].append(lon)
+    for plane_id in sorted(tracks):
         lats: list[float] = []
         lons: list[float] = []
-        for t in sim.ticks[::step]:
-            ids, _inertial, xyz = geometry_adapter.positions(scenario, t)
-            for sid in sids:
-                k = ids.index(sid)
-                v = xyz[k]
-                lat = math.degrees(math.asin(max(-1, min(1, v[2] / np.linalg.norm(v)))))
-                lon = math.degrees(math.atan2(v[1], v[0]))
-                lats.append(lat)
-                lons.append(lon)
+        for sid in sorted(tracks[plane_id]):
+            sat_lats, sat_lons = tracks[plane_id][sid]
+            lats += sat_lats + [None]
+            lons += sat_lons + [None]
         fig.add_trace(go.Scattergeo(
             lat=lats, lon=lons, mode="lines", name=f"плоскость {plane_id}",
             line=dict(width=1), opacity=0.6,
