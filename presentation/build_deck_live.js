@@ -42,7 +42,7 @@ function stat(s, x, y, w, num, label, color, numSize) {
 
 /* ============================ 1. ТИТУЛ ============================ */
 let s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 s.addShape(pres.shapes.LINE, { x: M, y: 0.9, w: 0.9, h: 0, line: { color: ACCENT, width: 2.5 } });
 s.addText("КОСМОХАКАТОН 2026 · КЕЙС «ПРОЕКТИРОВАНИЕ УСТОЙЧИВОЙ СПУТНИКОВОЙ ГРУППИРОВКИ»", {
   x: M, y: 1.1, w: 11.9, h: 0.35, fontFace: F, fontSize: 12.5, bold: true, color: MUTED, charSpacing: 2, margin: 0,
@@ -67,12 +67,12 @@ s.addText([
 
 /* ============================ 2. ПРОБЛЕМА ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Проблема", 0.75);
 huge(s, "Спутник над горизонтом ещё\nне означает, что связь есть", 1.15, 36);
 s.addText([
   { text: "Связь есть только когда в момент времени t существует полный путь:", options: { color: ACCENT2, breakLine: true } },
-  { text: "клиент → спутник → межспутниковая сеть → шлюз", options: { bold: true, color: WHITE } },
+  { text: "клиент → спутник → межспутниковая сеть → шлюз", options: { bold: true, color: WHITE, breakLine: true } },
   { text: "Например, при ISL 2000 км клиент видит спутник почти все сутки, но сквозной маршрут существует лишь 62,22% времени.", options: { color: MUTED, breakLine: true } },
 ], { x: M, y: 3.3, w: 11.9, h: 0.85, fontFace: F, fontSize: 17, margin: 0, paraSpaceAfter: 4 });
 const cards = [
@@ -90,7 +90,7 @@ foot(s, "видимость спутника — необходимое, но н
 
 /* ============================ 3. ПРОДУКТ + ВИДЕО ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Продукт", 0.75);
 huge(s, "Один сервис: конфигурация → состояние сети → рекомендация", 1.15, 27);
 s.addText("видеозапись работы сервиса — 37 секунд, всё видно", {
@@ -117,7 +117,7 @@ s.addText("▶ нажмите на видео при показе", { x: 9.35, y
 
 /* ============================ 4. РЕЗУЛЬТАТ ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Результат · базовые сценарии", 0.55);
 huge(s, "Цель 90% держит\nтолько полная группировка", 0.95, 38);
 const rows = [
@@ -150,7 +150,7 @@ foot(s, "официальный geometry.py · 720 отсчетов · стра�
 
 /* ============================ 5. ISL ПОРОГ ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Результат · дальность межспутниковой связи", 0.55);
 huge(s, "3000 км дают запас: целевой уровень держится\nпримерно с 2725 км", 0.95, 32);
 stat(s, M, 2.85, 4.6, "~275 км", "запаса штатных 3000 км\nотносительно найденной границы", ACCENT, 60);
@@ -179,7 +179,7 @@ foot(s, "тот же официальный расчет: при снижени�
 
 /* ============================ 6. УСТОЙЧИВОСТЬ ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Результат · устойчивость", 0.55);
 huge(s, "N-1: любой одиночный отказ\nсохраняет целевой уровень", 0.95, 32);
 stat(s, M, 2.9, 4.0, "94,31%", "худшая минимальная доступность\nсреди 48 суточных одиночных отказов\n(48/48 проверено, цель ≥90% выполнена)", ACCENT, 54);
@@ -202,7 +202,7 @@ rr.forEach((r, i) => {
 
 /* ============================ 7. ФИНАЛ ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 s.addShape(pres.shapes.LINE, { x: M, y: 0.85, w: 0.9, h: 0, line: { color: ACCENT, width: 2.5 } });
 huge(s, "Мы не добавили ни одного спутника —\nнашли запас там, где он уже был", 1.05, 33);
 stat(s, M, 3.1, 3.9, "96,67→98,33%", "мин. доступность после\nавтоподбора RAAN/фазирования\n(бюджет 40 прогонов)", ACCENT, 34);
@@ -220,24 +220,23 @@ s.addImage({ path: IMG("qr_service.png"), x: 10.52, y: 5.42, w: 1.76, h: 1.76 })
 s.addText([
   { text: REPO + "  ·  стенд: " + STAND.replace("https://", ""), options: { color: ACCENT2 } },
 ], { x: M, y: 6.35, w: 9.4, h: 0.35, fontFace: F, fontSize: 12.5, margin: 0 });
-s.addText("Спасибо! Вопросы?", { x: M, y: 6.8, w: 8.0, h: 0.45, fontFace: F, fontSize: 19, bold: true, color: WHITE, margin: 0 });
+s.addText("Спасибо! Вопросы?", { x: M, y: 7.12, w: 8.0, h: 0.45, fontFace: F, fontSize: 19, bold: true, color: WHITE, margin: 0 });
 
 /* ============================ B1. АЛГОРИТМ ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Backup · Алгоритм", 0.75);
 huge(s, "Кэш геометрии + фильтр состояния + 4 стратегии маршрутизации", 1.15, 28);
 const alg = [
-  ["Кэш геометрии — один раз на сценарий", "треки аппаратов, маски межспутниковых линий и наземных линий считаются одним проходом"],
-  ["Фильтр на каждом отсчете", "этап развертывания, периоды отказов и шлюзы накладываются маской: линия остается, только если оба конца активны"],
-  ["0 невалидных маршрутов", "каждый построенный путь проверяется на допустимость ребер в свой момент времени"],
-  ["A* = weighted", "8640/8640 маршрутов совпали на 4 официальных сценариях"],
-  ["Смена самой геометрии", "кэш признается непригодным и пересобирается — изменения параметров поддерживаются корректно"],
+  ["Кэш геометрии — один раз на сценарий", "треки и маски линий считаются одним проходом"],
+  ["Фильтр на каждом отсчете", "этап, отказы и шлюзы накладываются маской: линия живет, только если оба конца активны"],
+  ["A* = weighted", "8640/8640 маршрутов совпали; 0 невалидных путей"],
+  ["Смена самой геометрии", "изменения параметров подхватываются корректно"],
 ];
 alg.forEach((a, i) => {
-  const y = 3.5 + i * 1.0;
-  s.addText(a[0], { x: M, y: y, w: 5.6, h: 0.4, fontFace: F, fontSize: 15.5, bold: true, color: ACCENT, margin: 0 });
-  s.addText(a[1], { x: M + 0.25, y: y + 0.4, w: 5.6, h: 0.6, fontFace: F, fontSize: 12, color: ACCENT2, margin: 0 });
+  const y = 3.45 + i * 0.82;
+  s.addText(a[0], { x: M, y: y, w: 5.6, h: 0.34, fontFace: F, fontSize: 14.5, bold: true, color: ACCENT, margin: 0 });
+  s.addText(a[1], { x: M + 0.25, y: y + 0.36, w: 5.6, h: 0.5, fontFace: F, fontSize: 11.5, color: ACCENT2, margin: 0 });
 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 7.0, y: 2.9, w: 5.7, h: 3.6, fill: { color: PANEL }, line: { type: "none" }, rectRadius: 0.07 });
 s.addText("4 стратегии в интерфейсе", { x: 7.35, y: 3.15, w: 5.0, h: 0.4, fontFace: F, fontSize: 15.5, bold: true, color: WHITE, margin: 0 });
@@ -257,7 +256,7 @@ foot(s, "геометрия — официальный модуль органи
 
 /* ============================ B2. КАЧЕСТВО ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Backup · Качество", 0.75);
 huge(s, "133 теста: границы, маршруты,\nэкспорт, интерфейс", 1.15, 34);
 stat(s, M, 3.3, 3.9, "133", "теста проходят:\nвалидация (46 граничных\nкейсов), маршрутизация,\nметрики, экспорт, UI", ACCENT, 46);
@@ -271,7 +270,7 @@ foot(s);
 
 /* ============================ B3. ЭКСПОРТ ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Backup · Экспорт", 0.75);
 huge(s, "Минимальный официальный формат +\nотдельный файл анализа", 1.15, 30);
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: M, y: 2.6, w: 5.9, h: 3.6, fill: { color: PANEL }, line: { type: "none" }, rectRadius: 0.07 });
@@ -301,7 +300,7 @@ foot(s);
 
 /* ============================ B4. КРИТИЧНОСТЬ ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Backup · Критичность", 0.75);
 huge(s, "Критичные аппараты при одиночном отказе:\nleave-one-out по всем 48", 1.15, 28);
 const crit = [
@@ -333,7 +332,7 @@ foot(s);
 
 /* ============================ B5. РАЗВИТИЕ ============================ */
 s = pres.addSlide();
-s.background = { color: BG };
+s.background = { path: IMG("bg_content.png") };
 kicker(s, "Backup · Развитие", 0.75);
 huge(s, "Что за рамками базовой модели —\nи следующим шагом", 1.15, 30);
 const dev = [
