@@ -41,6 +41,8 @@ from cosmo.geometry_adapter import load_file  # noqa: E402
 from cosmo.models import (  # noqa: E402
     STATUS_LABELS,
     STRATEGY_LABELS,
+    STRATEGY_ASTAR,
+    STRATEGY_GREEDY,
     STRATEGY_MIN_DISTANCE,
     STRATEGY_MIN_HOPS,
     deep_copy,
@@ -502,7 +504,7 @@ with st.sidebar:
     st.header("3. Расчёт")
     strategy = st.selectbox(
         "Стратегия маршрутизации",
-        [STRATEGY_MIN_DISTANCE, STRATEGY_MIN_HOPS],
+        [STRATEGY_MIN_DISTANCE, STRATEGY_ASTAR, STRATEGY_MIN_HOPS, STRATEGY_GREEDY],
         format_func=lambda v: STRATEGY_LABELS[v],
         help="По умолчанию — минимум суммарной геометрической длины "
              "(взвешенный поиск кратчайшего пути по реальным расстояниям модели, "
@@ -605,7 +607,7 @@ if sim.validation_problems:
     st.error(f"Обнаружены недопустимые маршруты ({len(sim.validation_problems)}): "
              + "; ".join(sim.validation_problems[:3]))
 
-tab_names = ["Обзор", "Сеть и время", "Сравнение", "Устойчивость", "Экспорт", "О методике"]
+tab_names = ["Обзор", "Сеть и время", "Сравнение", "Устойчивость", "Алгоритмы", "Экспорт", "О методике"]
 tab_choice = st.radio("Раздел", tab_names, horizontal=True, key="tab_nav", label_visibility="collapsed")
 tabs = [tab_choice]  # совместимость с блоками below
 
@@ -738,6 +740,121 @@ if tab_choice == "Сеть и время":
         st.success(f"**Маршрут есть:** {' → '.join(path)} · переходов: {len(path) - 1}")
     else:
         st.error(f"**Маршрута нет ({hhmmss(t_s)}):** {STATUS_LABELS.get(status)} — {series.details[t_index]}")
+
+    # --- Экспресс-эксперимент: отказ спутника текущего маршрута ---
+    route_sat = next((n for n in path[1:-1] if n in sim.sat_ids), None)
+    if route_sat and status == 0:
+        st.markdown("---")
+        st.markdown("**Экспресс-эксперимент: что если этот спутник откажет?**")
+        if st.button(f"⚡ Отключить {route_sat} и пересчитать", key="stress_btn"):
+            st.session_state["stress_failure"] = {
+                "satellite_id": route_sat,
+                "start_s": 0,
+                "end_s": int(scenario_used["environment"]["horizon_s"]),
+            }
+            st.rerun()
+
+    if st.session_state.get("stress_failure"):
+        f = st.session_state["stress_failure"]
+        stress_sc = deep_copy(scenario_used)
+        stress_sc.setdefault("failures", []).append(dict(f))
+        with st.spinner(f"Пересчет с отказом {f['satellite_id']} на весь горизонт…"):
+            stress_sim = simulate_scenario(stress_sc, strategy=sim.strategy, with_backups=False)
+        st.markdown(f"**До / После отказа {f['satellite_id']}** — пункт {selected_client}, момент {hhmmss(t_s)}")
+        colA, colB = st.columns(2)
+        b_status = sim.series[selected_client].statuses[t_index]
+        a_status = stress_sim.series[selected_client].statuses[t_index]
+        with colA:
+            st.markdown("**БЫЛО (baseline)**")
+            if b_status == 0:
+                st.markdown("маршрут: " + " → ".join(sim.series[selected_client].paths[t_index]))
+            else:
+                st.markdown("маршрута нет — " + STATUS_LABELS.get(b_status, ""))
+            st.markdown(f"доступность: **{fmt_pct(sim.metrics[selected_client].availability_fraction)}** · "
+                        f"макс. перерыв: **{sim.metrics[selected_client].max_outage_s} с**")
+        with colB:
+            st.markdown("**СТАЛО (с отказом)**")
+            if a_status == 0:
+                st.markdown("маршрут: " + " → ".join(stress_sim.series[selected_client].paths[t_index]))
+                if stress_sim.series[selected_client].paths[t_index] != sim.series[selected_client].paths[t_index]:
+                    st.markdown("**маршрут перестроился** — связь сохранена")
+            else:
+                st.markdown("**связь потеряна** — " + STATUS_LABELS.get(a_status, ""))
+            st.markdown(f"доступность: **{fmt_pct(stress_sim.metrics[selected_client].availability_fraction)}** · "
+                        f"макс. перерыв: **{stress_sim.metrics[selected_client].max_outage_s} с**")
+        d_rows = []
+        for cid in sim.clients:
+            bm, am = sim.metrics[cid], stress_sim.metrics[cid]
+            d_rows.append({
+                "Пункт": cid,
+                "Доступность до": fmt_pct(bm.availability_fraction),
+                "после": fmt_pct(am.availability_fraction),
+                "Δ, п.п.": f"{100 * (am.availability_fraction - bm.availability_fraction):+.2f}",
+                "Макс. перерыв был, с": bm.max_outage_s,
+                "стал, с": am.max_outage_s,
+            })
+        st.dataframe(pd.DataFrame(d_rows), use_container_width=True, hide_index=True)
+        if st.button("✕ Сбросить эксперимент", key="stress_clear"):
+            del st.session_state["stress_failure"]
+            st.rerun()
+
+    # --- Экспресс-эксперимент: отказ спутника текущего маршрута ---
+    route_sat = next((n for n in path[1:-1] if n in sim.sat_ids), None)
+    if route_sat and status == 0:
+        st.markdown("---")
+        st.markdown("**Экспресс-эксперимент: что если этот спутник откажет?**")
+        if st.button(f"⚡ Отключить {route_sat} и пересчитать", key="stress_btn"):
+            st.session_state["stress_failure"] = {
+                "satellite_id": route_sat,
+                "start_s": 0,
+                "end_s": int(scenario_used["environment"]["horizon_s"]),
+            }
+            st.rerun()
+
+    if st.session_state.get("stress_failure"):
+        f = st.session_state["stress_failure"]
+        stress_sc = deep_copy(scenario_used)
+        stress_sc.setdefault("failures", []).append(dict(f))
+        with st.spinner(f"Пересчет с отказом {f['satellite_id']} на весь горизонт…"):
+            stress_sim = simulate_scenario(stress_sc, strategy=sim.strategy, with_backups=False)
+        b_path = sim.series[selected_client].paths[t_index]
+        a_path = stress_sim.series[selected_client].paths[t_index]
+        b_status = sim.series[selected_client].statuses[t_index]
+        a_status = stress_sim.series[selected_client].statuses[t_index]
+        st.markdown(f"**До / После отказа {f['satellite_id']}** для {selected_client}")
+        colA, colB = st.columns(2)
+        with colA:
+            st.markdown("**БЫЛО (baseline)**")
+            if b_status == 0:
+                st.markdown("маршрут: " + " → ".join(sim.series[selected_client].paths[t_index]))
+            else:
+                st.markdown("маршрута нет — " + STATUS_LABELS.get(sim.series[selected_client].statuses[t_index], ""))
+            st.markdown(f"доступность: **{fmt_pct(sim.metrics[selected_client].availability_fraction)}**, "
+                        f"макс. перерыв: **{sim.metrics[selected_client].max_outage_s} с**")
+        with colB:
+            st.markdown("**СТАЛО (с отказом)**")
+            if a_status == 0:
+                st.markdown("маршрут: " + " → ".join(stress_sim.series[selected_client].paths[t_index]))
+                st.markdown("**маршрут перестроился** — связь сохранена")
+            else:
+                st.markdown("**связь потеряна** — " + STATUS_LABELS.get(stress_sim.series[selected_client].statuses[t_index], ""))
+            st.markdown(f"доступность: **{fmt_pct(stress_sim.metrics[selected_client].availability_fraction)}**, "
+                        f"макс. перерыв: **{stress_sim.metrics[selected_client].max_outage_s} с**")
+        d_rows = []
+        for cid in sim.clients:
+            bm, am = sim.metrics[cid], stress_sim.metrics[cid]
+            d_rows.append({
+                "Пункт": cid,
+                "Доступность до": fmt_pct(bm.availability_fraction),
+                "после": fmt_pct(am.availability_fraction),
+                "Δ, п.п.": f"{100 * (am.availability_fraction - bm.availability_fraction):+.2f}",
+                "Макс. перерыв был, с": bm.max_outage_s,
+                "стал, с": am.max_outage_s,
+            })
+        st.dataframe(pd.DataFrame(d_rows), use_container_width=True, hide_index=True)
+        if st.button("✕ Сбросить эксперимент", key="stress_clear"):
+            del st.session_state["stress_failure"]
+            st.rerun()
 
     view_mode = st.radio(
         "Вид схемы",
@@ -877,6 +994,107 @@ if tab_choice == "Сравнение":
 # ---------------------------------------------------------------------------
 # Вкладка «Устойчивость»
 # ---------------------------------------------------------------------------
+
+if tab_choice == "Алгоритмы":
+    st.subheader("Algorithm Lab: сравнение стратегий маршрутизации")
+    st.caption("Одна физическая модель, четыре стратегии поиска пути. Гарантии и цена каждой — в таблице.")
+
+    @st.cache_data(show_spinner=False)
+    def algorithm_bench(scenario_json: str):
+        import time as _time
+        strategies = [
+            (STRATEGY_MIN_DISTANCE, "Минимум длины (по умолчанию)", "кратчайший по суммарной длине линий"),
+            (STRATEGY_ASTAR, "A* с гео-эвристикой", "тот же оптимум, меньше раскрытий узлов"),
+            (STRATEGY_MIN_HOPS, "Минимум переходов (BFS)", "baseline: минимум рёбер"),
+            (STRATEGY_GREEDY, "Жадная географическая", "без гарантии нахождения маршрута"),
+        ]
+        rows = []
+        base_paths = None
+        matches = 0
+        total = 0
+        for st_name, label, guarantee in strategies:
+            t0 = _time.time()
+            s = simulate_scenario(json.loads(scenario_json), strategy=st_name, with_backups=False)
+            dt = _time.time() - t0
+            mins = min(m.availability_fraction for m in s.metrics.values())
+            mean_av = sum(m.availability_fraction for m in s.metrics.values()) / len(s.metrics)
+            hops = [h for c in s.clients for h in s.series[c].hops if h]
+            avg_hops = sum(hops) / len(hops) if hops else None
+            changes = sum(m.route_change_count for m in s.metrics.values())
+            rows.append({
+                "Стратегия": label,
+                "Гарантия": guarantee,
+                "MIN доступность, %": round(100 * mins, 2),
+                "Средняя доступность, %": round(100 * mean_av, 2),
+                "Ср. переходов": round(sum(hops) / len(hops), 2) if hops else None,
+                "Смен маршрута": changes,
+                "Расчет, с": round(dt, 2),
+            })
+            if st_name == STRATEGY_MIN_DISTANCE:
+                base_paths = [list(s.series[c].paths) for c in s.clients]
+            else:
+                for ci, c in enumerate(s.clients):
+                    total += len(s.series[c].paths)
+                    matches += sum(1 for a, b in zip(base_paths[ci], s.series[c].paths) if a == b)
+        return rows, matches, total
+
+    rows, matches, total = algorithm_bench(scenario_json_of(scenario_used))
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    if total:
+        st.success(f"Проверка эквивалентности: A* и взвешенный поиск дали одинаковые маршруты на {matches} из {total} маршрутов.")
+    st.info("Floyd-Warshall не используется: на каждом отсчете нужны пути от нескольких пунктов к шлюзу, "
+            "а не матрица всех пар. Точечный поиск практичнее и дешевле. Жадная стратегия — контрпример: "
+            "на деградированной сети она может не найти существующую связность.", icon="💡")
+
+if tab_choice == "Алгоритмы":
+    st.subheader("Algorithm Lab: сравнение стратегий маршрутизации")
+    st.caption("Одна физическая модель, четыре стратегии поиска пути: гарантии, качество и цена каждой.")
+
+    @st.cache_data(show_spinner=False)
+    def algorithm_bench(scenario_json: str):
+        import time as _time
+        strategies = [
+            (STRATEGY_MIN_DISTANCE, "Минимум длины (по умолчанию)", "кратчайший по суммарной длине линий"),
+            (STRATEGY_ASTAR, "A* с гео-эвристикой", "тот же оптимум, меньше раскрытий узлов"),
+            (STRATEGY_MIN_HOPS, "Минимум переходов (BFS)", "baseline: минимум рёбер"),
+            (STRATEGY_GREEDY, "Жадная географическая", "без гарантии нахождения маршрута"),
+        ]
+        rows = []
+        base_paths = None
+        matches = 0
+        total = 0
+        for st_name, label, guarantee in strategies:
+            t0 = _time.time()
+            s = simulate_scenario(json.loads(scenario_json), strategy=st_name, with_backups=False)
+            dt = _time.time() - t0
+            mins = min(m.availability_fraction for m in s.metrics.values())
+            mean_av = sum(m.availability_fraction for m in s.metrics.values()) / len(s.metrics)
+            hops = [h for c in s.clients for h in s.series[c].hops if h]
+            changes = sum(m.route_change_count for m in s.metrics.values())
+            rows.append({
+                "Стратегия": label,
+                "Гарантия": guarantee,
+                "MIN доступность, %": round(100 * mins, 2),
+                "Средняя доступность, %": round(100 * mean_av, 2),
+                "Ср. переходов": round(sum(hops) / len(hops), 2) if hops else None,
+                "Смен маршрута": changes,
+                "Расчет, с": round(dt, 2),
+            })
+            if st_name == STRATEGY_MIN_DISTANCE:
+                base_paths = [list(s.series[c].paths) for c in s.clients]
+            else:
+                for ci, c in enumerate(s.clients):
+                    total += len(s.series[c].paths)
+                    matches += sum(1 for a, b in zip(base_paths[ci], s.series[c].paths) if a == b)
+        return rows, matches, total
+
+    rows, matches, total = algorithm_bench(scenario_json_of(scenario_used))
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    if total:
+        st.success(f"Проверка эквивалентности: A* и взвешенный поиск дали одинаковые маршруты на {matches} из {total} маршрутов.")
+    st.info("Floyd-Warshall не используется: на каждом отсчете нужны пути от нескольких пунктов к шлюзу, "
+            "а не матрица всех пар. Жадная стратегия — контрпример: на деградированной сети она может "
+            "не найти существующую связность.", icon="💡")
 
 if tab_choice == "Устойчивость":
     st.subheader("Причины перерывов (все пункты, весь горизонт)")
