@@ -23,6 +23,8 @@ pres.author = "Команда kosmo-nizni_klodiki_148";
 pres.title = "Устойчивая спутниковая группировка — инженерный веб-сервис";
 
 const IMG = (f) => path.join(__dirname, "img", f);
+const VIDEO_PATH = path.join(__dirname, "demo_screencast.mp4");
+const VIDEO_COVER = "image/png;base64," + require("fs").readFileSync(path.join(__dirname, "poster_video.b64"), "utf-8").trim();
 
 function orbit(slide, dark) {
   const c = dark ? PRIMARY_MID : PRIMARY_SOFT;
@@ -74,13 +76,13 @@ s.addText("Целевой уровень кейса: ≥90% времени со 
 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 10.15, y: 4.5, w: 2.45, h: 2.3, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.06 });
 s.addImage({ path: IMG("qr_service.png"), x: 10.33, y: 4.6, w: 2.1, h: 2.1 });
-s.addText("Демо-сервис — откройте\nи попробуйте сами", {
+s.addText("Демо-сервис — откройте\nс телефона и попробуйте сами", {
   x: 10.0, y: 6.87, w: 2.75, h: 0.42, fontFace: F, fontSize: 10, color: PRIMARY_SOFT, margin: 0, align: "center",
 });
 s.addShape(pres.shapes.LINE, { x: M, y: 5.0, w: 3.2, h: 0, line: { color: ACCENT, width: 2.5 } });
 s.addText([
   { text: "Команда kosmo-nizni_klodiki_148", options: { breakLine: true, bold: true, color: TEXT_L } },
-  { text: "github.com/ivergit88/cosmohak", options: { color: PRIMARY_SOFT } },
+  { text: "gitverse.ru/hackrus.experts/kosmo-nizni_klodiki_148 — официальный репозиторий", options: { color: PRIMARY_SOFT } },
 ], { x: M, y: 5.25, w: 9.2, h: 0.8, fontFace: F, fontSize: 14, margin: 0, paraSpaceAfter: 4 });
 
 /* ============================== 2. ЧТО РЕШАЕТ ============================== */
@@ -118,24 +120,37 @@ titleBar(s, "Продукт", "Один сервис: конфигурация �
 s.addText("① Конфигурация            →        ② Сеть: маршрут или причина разрыва        →        ③ Доступность и рекомендация", {
   x: M, y: 1.58, w: 12.3, h: 0.3, fontFace: F, fontSize: 12, bold: true, color: PRIMARY_SOFT, margin: 0,
 });
-s.addImage({ path: IMG("crop_config.png"), x: M, y: 1.98, w: 1.95, h: 3.74 });
-s.addShape(pres.shapes.RECTANGLE, { x: M, y: 1.98, w: 1.95, h: 3.74, fill: { type: "none" }, line: { color: PRIMARY_MID, width: 1 } });
-s.addImage({ path: IMG("crop_network.png"), x: 2.8, y: 1.98, w: 7.07, h: 4.3 });
-s.addShape(pres.shapes.RECTANGLE, { x: 2.8, y: 1.98, w: 7.07, h: 4.3, fill: { type: "none" }, line: { color: PRIMARY_MID, width: 1 } });
-s.addImage({ path: IMG("crop_summary.png"), x: 2.8, y: 6.42, w: 5.6, h: 0.95 });
-s.addShape(pres.shapes.RECTANGLE, { x: 2.8, y: 6.42, w: 5.6, h: 0.95, fill: { type: "none" }, line: { color: PRIMARY_MID, width: 1 } });
-s.addText("Интерфейс на русском:\nскрытый сценарий жюри\nпроходит без правок кода", {
-  x: 10.45, y: 2.3, w: 2.4, h: 1.6, fontFace: F, fontSize: 13, color: TEXT_L, margin: 0,
+s.addText("Видеодемонстрация работы сервиса (35 секунд, со звуком не требуется — всё видно)", {
+  x: M, y: 1.95, w: 8.4, h: 0.3, fontFace: F, fontSize: 12.5, bold: true, color: TEXT_L, margin: 0,
 });
-s.addText("3D-схема сети, шкала состояний\nпо всем пунктам, таблица метрик\nи рекомендация с цифрами", {
-  x: 10.45, y: 4.1, w: 2.4, h: 2.2, fontFace: F, fontSize: 13, color: MUTED_L, margin: 0,
+s.addMedia({
+  type: "video",
+  path: VIDEO_PATH,
+  x: M, y: 2.35, w: 8.4, h: 4.725,
+  cover: VIDEO_COVER,
+});
+s.addShape(pres.shapes.RECTANGLE, { x: M, y: 2.35, w: 8.4, h: 4.725, fill: { type: "none" }, line: { color: PRIMARY_MID, width: 1 } });
+s.addText("Что в записи:", {
+  x: 9.35, y: 2.35, w: 3.4, h: 0.35, fontFace: F, fontSize: 13.5, bold: true, color: PRIMARY_SOFT, margin: 0,
+});
+const demoPts = [
+  "карточки доступности по каждому пункту",
+  "3D-схема сети: спутники, связи, маршрут",
+  "прыжок к перерыву — причина разрыва",
+  "шкала состояний за сутки по всем пунктам",
+];
+s.addText(demoPts.map((t, i) => ({ text: t, options: { bullet: { code: "25B8", indent: 12 }, breakLine: i < demoPts.length - 1 } })), {
+  x: 9.35, y: 2.8, w: 3.4, h: 2.6, fontFace: F, fontSize: 12.5, color: TEXT_L, paraSpaceAfter: 10, margin: 0,
+});
+s.addText("▶ нажмите на видео при показе. Живой стенд — по QR на титуле.", {
+  x: 9.35, y: 5.6, w: 3.4, h: 1.2, fontFace: F, fontSize: 12, color: MUTED_L, margin: 0,
 });
 
 /* ============================== 4. РЕЗУЛЬТАТЫ ============================== */
 s = pres.addSlide();
 s.background = { color: BG_LIGHT };
 orbit(s, false);
-titleBar(s, "Результаты", "Штатная конфигурация достигает цели — этапы 1–2 и стресс-сценарии нет");
+titleBar(s, "Результаты", "Среди проверенных сценариев целевой уровень достигает только полная штатная конфигурация");
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: M, y: 1.62, w: 12.13, h: 0.62, fill: { color: "E3F0E8" }, line: { type: "none" }, rectRadius: 0.06 });
 s.addText([
   { text: "Базовая полная конфигурация: ", options: { color: TEXT_D } },
@@ -192,7 +207,7 @@ orbit(s, false);
 titleBar(s, "Устойчивость", "Не только процент доступности — а почему сеть теряет связь");
 s.addText("S44", { x: M, y: 1.9, w: 3.4, h: 1.25, fontFace: F, fontSize: 64, bold: true, color: ACCENT, margin: 0 });
 s.addText([
-  { text: "№1 в ранжировании критичности\nпо single-outage анализу:\n", options: { bold: true, color: TEXT_D } },
+  { text: "№1 в ранжировании критичности\nпо анализу одиночного отказа:\n", options: { bold: true, color: TEXT_D } },
   { text: "отказ снижает минимальную\nдоступность на 2.36 п.п., затрагивает\nвсе три пункта; 45 клиент-отсчетов\nтеряют маршрут", options: { color: MUTED } },
 ], { x: M, y: 3.2, w: 4.0, h: 2.2, fontFace: F, fontSize: 13, margin: 0, lineSpacing: 16 });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 4.95, y: 1.8, w: 7.8, h: 4.8, fill: { color: "FFFFFF" }, line: { type: "none" }, rectRadius: 0.08, shadow: { type: "outer", color: "1B2A3A", blur: 8, offset: 2, angle: 90, opacity: 0.14 } });
@@ -228,7 +243,7 @@ res.forEach((r, i) => {
 });
 s.addShape(pres.shapes.LINE, { x: M, y: 3.45, w: 12.1, h: 0, line: { color: PRIMARY_MID, width: 1 } });
 s.addText("РЕКОМЕНДАЦИЯ", { x: M, y: 3.58, w: 10, h: 0.3, fontFace: F, fontSize: 13, bold: true, color: PRIMARY_SOFT, charSpacing: 3, margin: 0 });
-s.addText("Среди проверенных этапов и стресс-сценариев цель ≥90%\nдля всех трёх пунктов достигается только на этапе 3\nпри штатной дальности ISL 3000 км", {
+s.addText("Среди проверенных этапов и стресс-сценариев\nцелевой уровень ≥90% для всех трёх пунктов\nдостигается только на этапе 3 при штатной дальности ISL 3000 км", {
   x: M, y: 3.92, w: 9.4, h: 1.2, fontFace: F, fontSize: 20, bold: true, color: TEXT_L, margin: 0, lineSpacing: 28,
 });
 s.addText("96.7–98.9% доступности  ·  расчёт воспроизводим в сервисе и автоматических тестах", {
@@ -272,7 +287,7 @@ s.background = { color: BG_LIGHT };
 orbit(s, false);
 titleBar(s, "Backup · Качество", "Проверяемо, воспроизводимо, запускается одной командой");
 const q = [
-  { n: "131", t: "автотест: валидация (44 граничных\nкейса), маршрутизация, метрики,\nэкспорт, интерфейс", c: PRIMARY },
+  { n: "133", t: "автотеста: валидация (46 граничных\nкейса), маршрутизация, метрики,\nэкспорт, интерфейс", c: PRIMARY },
   { n: "2", t: "реализации геометрии: официальная\nи независимая — parity-тесты\nсовпадения", c: PRIMARY },
   { n: "clean", t: "запуск по README на свежем venv:\npip install → streamlit run —\nпроверено, HTTP 200", c: ACCENT },
   { n: "1", t: "команда Docker: образ собирается\nи работает без API-ключей\nи внешних сервисов", c: PRIMARY },
@@ -332,7 +347,7 @@ s = pres.addSlide();
 s.background = { color: BG_LIGHT };
 orbit(s, false);
 titleBar(s, "Backup · Критичность и резерв", "Критичные аппараты при одиночном отказе и запас прочности сети");
-s.addText("Топ критичности (полная группировка, single-outage анализ)", { x: M, y: 1.75, w: 7.0, h: 0.4, fontFace: F, fontSize: 15, bold: true, color: TEXT_D, margin: 0 });
+s.addText("Топ критичности (полная группировка, анализ одиночного отказа)", { x: M, y: 1.75, w: 7.0, h: 0.4, fontFace: F, fontSize: 15, bold: true, color: TEXT_D, margin: 0 });
 const crit = [
   ["S44", "Δmin 2.36 п.п.", "Δmean 2.08 п.п.", "45 клиент-отсч."],
   ["S45", "Δmin 2.36 п.п.", "Δmean 1.99 п.п.", "43 клиент-отсч."],
@@ -386,6 +401,6 @@ s.addText([
   { text: "Уже готово к этому: ", options: { bold: true, color: TEXT_D } },
   { text: "движок принимает любые environment-значения из JSON, валидация изолирована, регрессионные тесты не дадут тихо изменить официальную модель.", options: { color: TEXT_D } },
 ], { x: 7.2, y: 4.5, w: 5.25, h: 1.6, fontFace: F, fontSize: 13, margin: 0 });
-srcLine(s, "Рельеф/застройка упомянуты постановщиком как развитие и не влияют на текущие критерии оценки", false);
+srcLine(s, "Рельеф и застройка упомянуты постановщиком как возможное развитие и не входят в обязательную базовую модель кейса", false);
 
 pres.writeFile({ fileName: path.join(__dirname, "kosmo-nizni_klodiki_148.pptx") }).then(() => console.log("OK: kosmo-nizni_klodiki_148.pptx"));

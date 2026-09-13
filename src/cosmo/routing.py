@@ -29,6 +29,8 @@ from .models import (
     STATUS_ISL_DISCONNECTED,
     STATUS_NO_GATEWAY_CONTACT,
     STATUS_NO_VISIBLE_SAT,
+    STRATEGY_ASTAR,
+    STRATEGY_GREEDY,
     STRATEGY_MIN_DISTANCE,
     STRATEGY_MIN_HOPS,
 )
@@ -242,6 +244,12 @@ def find_route(g: LinkGraph, client_id: str, strategy: str = STRATEGY_MIN_DISTAN
     """
     if strategy == STRATEGY_MIN_DISTANCE:
         return find_route_min_distance(g, client_id)
+    if strategy == STRATEGY_ASTAR:
+        from .routing_extra import find_route_astar
+        return find_route_astar(g, client_id)[0]
+    if strategy == STRATEGY_GREEDY:
+        from .routing_extra import find_route_greedy
+        return find_route_greedy(g, client_id)[0]
     return find_route_min_hops(g, client_id)
 
 

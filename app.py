@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from cosmo import visualization as viz  # noqa: E402
+from cosmo.globe import globe_view  # noqa: E402
 from cosmo.comparison import (  # noqa: E402
     Variant,
     config_diff_rows,
@@ -62,6 +63,30 @@ BUILTIN_SCENARIOS = {
 }
 
 st.set_page_config(page_title="КосмоХакатон — Устойчивая спутниковая группировка", page_icon="🛰", layout="wide")
+
+# Адаптивность: на узких экранах (телефон) колонки складываются друг под друга,
+# метки и отступы уменьшаются. На десктопе ничего не меняется.
+st.markdown(
+    """
+    <style>
+    @media (max-width: 820px) {
+      [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; }
+      [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+      }
+      [data-testid="stMainBlockContainer"] {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+      .stApp h1 { font-size: 1.35rem !important; }
+      [data-testid="stMetricValue"] { font-size: 1.15rem !important; }
+      [data-testid="stMetricLabel"] p { font-size: 0.78rem !important; }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -640,6 +665,7 @@ if tab_choice == "Обзор":
     with right:
         st.plotly_chart(viz.ground_track(scenario_used, sim, sim.ticks[min(st.session_state.get("t_slider", 0), len(sim.ticks) - 1)]),
                         use_container_width=True)
+        st.caption("Подспутниковые треки за сутки; оранжевый ромб — шлюз, синие — пункты")
 
     rows = []
     for client_id in sim.clients:
@@ -713,8 +739,20 @@ if tab_choice == "Сеть и время":
     else:
         st.error(f"**Маршрута нет ({hhmmss(t_s)}):** {STATUS_LABELS.get(status)} — {series.details[t_index]}")
 
-    net_fig = viz.network_3d(scenario_used, sim, t_s, selected_client, path)
-    st.plotly_chart(net_fig, use_container_width=True)
+    view_mode = st.radio(
+        "Вид схемы",
+        ["🌍 Глобус", "🛰 3D-схема"],
+        horizontal=True, key="net_view_mode",
+        label_visibility="collapsed",
+    )
+    if view_mode == "🌍 Глобус":
+        st.plotly_chart(globe_view(scenario_used, sim, t_s, selected_client, path),
+                        use_container_width=True, config={"displaylogo": False})
+        st.caption("Тёмный глобус: зелёные линии — межспутниковые связи, пунктир — наземные, "
+                   "оранжевое — маршрут до шлюза. Глобус вращается мышью.")
+    else:
+        net_fig = viz.network_3d(scenario_used, sim, t_s, selected_client, path)
+        st.plotly_chart(net_fig, use_container_width=True)
 
     st.plotly_chart(viz.timeline_heatmap(sim, selected_client), use_container_width=True)
     st.plotly_chart(viz.hops_scatter(sim, selected_client), use_container_width=True)
@@ -758,7 +796,46 @@ if tab_choice == "Сравнение":
         st.markdown("#### Различия конфигурации")
         st.dataframe(pd.DataFrame(config_diff_rows(va.scenario, vb.scenario)),
                      use_container_width=True, hide_index=True)
-        st.markdown("#### Метрики по пунктам")
+        st.markdown("#### Матрица показателей (подсвечено — лучшая сторона)")
+        matrix_rows = []
+        for cid in va.metrics:
+            ma, mb = va.metrics[cid], vb.metrics[cid]
+            matrix_rows += [
+                {"Показатель": f"{cid} · доступность, %", "A": round(100 * ma.availability_fraction, 2),
+                 "B": round(100 * mb.availability_fraction, 2), "выше лучше": True},
+                {"Показатель": f"{cid} · видимость, %", "A": round(100 * ma.visibility_fraction, 2),
+                 "B": round(100 * mb.visibility_fraction, 2), "выше лучше": True},
+                {"Показатель": f"{cid} · макс. перерыв, с", "A": float(ma.max_outage_s),
+                 "B": float(mb.max_outage_s), "выше лучше": False},
+                {"Показатель": f"{cid} · перерывов, шт", "A": float(len(ma.outage_intervals)),
+                 "B": float(len(mb.outage_intervals)), "выше лучше": False},
+                {"Показатель": f"{cid} · переходов, ср.", "A": ma.mean_hops, "B": mb.mean_hops,
+                 "выше лучше": False},
+            ]
+        ga, gb = va.global_metrics, vb.global_metrics
+        matrix_rows += [
+            {"Показатель": "MIN доступность, %", "A": round(100 * ga.min_availability, 2),
+             "B": round(100 * gb.min_availability, 2), "выше лучше": True},
+            {"Показатель": "MEAN доступность, %", "A": round(100 * ga.mean_availability, 2),
+             "B": round(100 * gb.mean_availability, 2), "выше лучше": True},
+            {"Показатель": "Худший перерыв, с", "A": float(ga.worst_max_outage_s),
+             "B": float(gb.worst_max_outage_s), "выше лучше": False},
+        ]
+        matrix = pd.DataFrame(matrix_rows)
+        _GOOD_A, _GOOD_B = "background:#122b1a; color:#7BD88F", "background:#2b1a12; color:#E8A47A"
+        _NEUTRAL = ["", ""]
+        st.dataframe(
+            matrix.style
+                 .format({"A": "{:.2f}", "B": "{:.2f}"})
+                 .apply(lambda row: (
+                     _NEUTRAL if row["A"] is None or row["B"] is None or abs(row["A"] - row["B"]) < 1e-9
+                     else ([_GOOD_A, _GOOD_B] if (row["A"] > row["B"]) == row["выше лучше"]
+                           else [_GOOD_B, _GOOD_A])
+                 ), axis=1, subset=["A", "B"]),
+             use_container_width=True, hide_index=True, height=28 * min(len(matrix), 14) + 38,
+        )
+        st.caption("Зелёная ячейка — лучшее значение варианта для этой строки; при равенстве подсветки нет.")
+        st.markdown("#### Детальные различия")
         st.dataframe(pd.DataFrame(metrics_diff_rows(va.metrics, vb.metrics)),
                      use_container_width=True, hide_index=True)
         st.markdown("#### Глобальные показатели")

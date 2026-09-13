@@ -186,11 +186,12 @@ def timeline_heatmap(sim: SimulationResult, selected_client: str | None = None) 
         for j in range(len(sim.ticks)):
             custom[i][j] = f"{c} · {times[j]}<br>{STATUS_LABELS.get(s.statuses[j], '')}<br>{s.details[j] or ''}"
 
-    # жесткие сегменты: каждый статус занимает ровно 1/5 шкалы, без интерполяции
+    # жесткие сегменты: каждый статус занимает ровно 1/5 шкалы, без интерполяции.
+    # zmin=-0.5, zmax=4.5, поэтому значение v попадает в сегмент [(v+0.5)/5; (v+1.5)/5]
     colorscale = []
     for code in range(5):
-        lo = (code - 0.5) / 5.0
-        hi = (code + 0.5) / 5.0
+        lo = code / 5.0
+        hi = (code + 1) / 5.0
         colorscale.append([lo, STATUS_COLORS[code]])
         colorscale.append([hi, STATUS_COLORS[code]])
 
@@ -293,10 +294,15 @@ def ground_track(scenario: dict[str, Any], sim: SimulationResult, t_s: int) -> g
         projection_type="natural earth", showland=True, landcolor="#e8eaf0",
         showcountries=True, countrycolor="#c5cdd8", showcoastlines=True, coastlinecolor="#b0bac6",
         lataxis_range=[35, 85], lonaxis_range=[-20, 180], resolution=50,
+        domain=dict(x=[0, 1], y=[0, 1]),
     )
+    # легенда — горизонтально под картой, поля минимальные: карта занимает всё место
+    # и не перекрывается легендой на узких экранах
     fig.update_layout(
-        title=f"Подспутниковые треки за сутки и наземные пункты (момент {hhmmss(t_s)})",
-        margin=dict(l=10, r=10, t=50, b=10), height=430,
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="top", y=-0.02, xanchor="left", x=0,
+                    bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
+        margin=dict(l=4, r=4, t=6, b=4), height=430,
     )
     return fig
 

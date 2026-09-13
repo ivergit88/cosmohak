@@ -13,3 +13,6 @@ upload/
 *.zip
 *.log
 scripts/bore.log
+presentation/demo_raw.webm
+presentation/poster_frames/
+presentation/vid/

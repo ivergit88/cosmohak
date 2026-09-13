@@ -37,10 +37,14 @@ LAUNCH_STAGES = (1, 2, 3)
 
 STRATEGY_MIN_HOPS = "min_hops"
 STRATEGY_MIN_DISTANCE = "min_distance"
+STRATEGY_ASTAR = "astar"
+STRATEGY_GREEDY = "greedy"
 
 STRATEGY_LABELS: dict[str, str] = {
     STRATEGY_MIN_DISTANCE: "Минимум суммарной длины линий (по умолчанию)",
+    STRATEGY_ASTAR: "A* с гео-эвристикой (тот же оптимум, меньше раскрытий)",
     STRATEGY_MIN_HOPS: "Минимум переходов (BFS, baseline)",
+    STRATEGY_GREEDY: "Жадная географическая (быстро, без гарантии)",
 }
 
 

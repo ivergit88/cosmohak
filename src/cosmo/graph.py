@@ -8,7 +8,7 @@ snapshot.edges (контакты двунаправленные). Наземны
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .models import gateways_of
@@ -33,6 +33,7 @@ class LinkGraph:
     offline_gateways: frozenset[str]
     active_sats: frozenset[str]
     edge_set: frozenset[tuple[str, str]]
+    positions: dict[str, tuple[float, float, float]] = field(default_factory=dict)
 
     def online_gateways_with_contact(self) -> list[str]:
         """Шлюзы, которые онлайн и видят хотя бы один активный спутник."""
@@ -68,8 +69,26 @@ def build_link_graph(snapshot: dict[str, Any], scenario: dict[str, Any]) -> Link
     }
     gateways = tuple(gateways_of(scenario))
     offline = frozenset(gw for gw in gateways if not links.get(gw) and _is_offline(snapshot, scenario, gw))
+    import math as _math
+
+    positions: dict[str, tuple[float, float, float]] = {}
+    for s in snapshot["satellites"]:
+        v = (s["x_km"], s["y_km"], s["z_km"])
+        norm = _math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2) or 1.0
+        lat = _math.degrees(_math.asin(max(-1.0, min(1.0, v[2] / norm))))
+        lon = _math.degrees(_math.atan2(v[1], v[0]))
+        positions[s["id"]] = v  # Earth-fixed координаты официального snapshot
+    for g in scenario["ground_sites"]:
+        lat = _math.radians(g["lat_deg"])
+        lon = _math.radians(g["lon_deg"])
+        r = 6371.0
+        positions[g["id"]] = (r * _math.cos(lat) * _math.cos(lon),
+                              r * _math.cos(lat) * _math.sin(lon),
+                              r * _math.sin(lat))
+
     return LinkGraph(
         sat_ids=sat_ids,
+        positions=positions,
         sat_adj=adj,
         client_links={k: v for k, v in links.items() if k not in set(gateways)},
         gateway_links={k: v for k, v in links.items() if k in set(gateways)},

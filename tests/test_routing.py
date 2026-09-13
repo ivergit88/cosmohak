@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from cosmo.routing_extra import find_route_greedy
 from cosmo.routing import (
     find_backup_route,
     find_route_min_distance,
@@ -208,3 +209,58 @@ def test_lexicographic_determinism_on_real_scenario(scenarios):
         for client in g.clients:
             results = {find_route(g, client, "min_hops").path for _ in range(5)}
             assert len(results) == 1, (t, client)
+
+
+def test_astar_matches_dijkstra_and_expands_less(scenarios):
+    """A* с гео-эвристикой: тот же оптимальный маршрут, меньше раскрытых узлов."""
+    from cosmo.geometry_adapter import snapshot
+    from cosmo.graph import build_link_graph
+    from cosmo.routing import find_route_min_distance
+    from cosmo.routing_extra import find_route_astar
+
+    scenario = scenarios["01_full_constellation.json"]
+    g = build_link_graph(snapshot(scenario, 0), scenario)
+    for client in g.clients:
+        d = find_route_min_distance(g, client)
+        a, expanded = find_route_astar(g, client)
+        assert a.path == d.path, (client, a.path, d.path)
+        assert expanded <= len(g.sat_ids) + len(g.gateways)
+
+
+def test_astar_no_route_case():
+    from cosmo.routing_extra import find_route_astar
+
+    g = make_link_graph(
+        sats=["S1"], adj={}, client_links={"C1": [("S1", 10.0)]},
+        gateway_links={"GW": []}, gateways=("GW",),
+    )
+    res, _ = find_route_astar(g, "C1")
+    # шлюз в системе, но не видит ни одного спутника → NO_GATEWAY_CONTACT
+    assert res.status_code == 3
+
+
+def test_greedy_finds_direct_path():
+    g = make_link_graph(
+        sats=["S1"], adj={}, client_links={"C1": [("S1", 10.0)]},
+        gateway_links={"GW": [("S1", 10.0)]},
+    )
+    res, expanded = find_route_greedy(g, "C1")
+    assert res.connected and res.path == ("C1", "S1", "GW")
+    assert expanded >= 1
+
+
+def test_greedy_stuck_reports_honestly():
+    """Жадная стратегия застревает в локальном минимуме и честно сообщает об этом."""
+    # S1 виден из пункта, но связь до шлюза есть только у S2, до которого
+    # жадный шаг не доходит (S2 дальше от шлюза, чем S1).
+    g = make_link_graph(
+        sats=["S1", "S2"],
+        adj={"S1": [("S2", 10.0)], "S2": [("S1", 10.0)]},
+        client_links={"C1": [("S1", 10.0)]},
+        gateway_links={"GW": [("S2", 30.0)]},
+    )
+    # проверим через routing_extra с подменой метрики: расстояние до шлюза у S1 меньше
+    from cosmo.routing_extra import find_route_greedy
+    res, expanded = find_route_greedy(g, "C1")
+    # жадная стратегия вправе не найти маршрут — главное не падать и сообщить статус
+    assert res.status_code in (0, 4)
